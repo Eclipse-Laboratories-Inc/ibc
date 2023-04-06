@@ -1,8 +1,12 @@
 use {
-    crate::eclipse_chain,
+    crate::{
+        eclipse_chain,
+        known_proto::{KnownProto, KnownProtoWithFrom},
+    },
     core::time::Duration,
     eclipse_ibc_proto::eclipse::ibc::chain::v1::{
-        ClientState as RawClientState, ConsensusState as RawConsensusState, Header as RawHeader,
+        ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
+        Header as RawEclipseHeader,
     },
     ibc::{
         core::{
@@ -37,9 +41,9 @@ use {
 };
 
 const CLIENT_TYPE: &str = "xx-eclipse";
-const CONSENSUS_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ConsensusState";
-const HEADER_TYPE_URL: &str = "/eclipse.ibc.v1.chain.Header";
-const CLIENT_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ClientState";
+pub const ECLIPSE_CONSENSUS_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ConsensusState";
+pub const ECLIPSE_HEADER_TYPE_URL: &str = "/eclipse.ibc.v1.chain.Header";
+pub const ECLIPSE_CLIENT_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ClientState";
 
 fn client_type() -> ClientType {
     ClientType::new(CLIENT_TYPE.to_owned())
@@ -85,7 +89,7 @@ impl ConsensusState for EclipseConsensusState {
     }
 }
 
-impl From<EclipseConsensusState> for RawConsensusState {
+impl From<EclipseConsensusState> for RawEclipseConsensusState {
     fn from(
         EclipseConsensusState {
             commitment_root,
@@ -99,14 +103,14 @@ impl From<EclipseConsensusState> for RawConsensusState {
     }
 }
 
-impl TryFrom<RawConsensusState> for EclipseConsensusState {
+impl TryFrom<RawEclipseConsensusState> for EclipseConsensusState {
     type Error = Error;
 
     fn try_from(
-        RawConsensusState {
+        RawEclipseConsensusState {
             commitment_root,
             timestamp,
-        }: RawConsensusState,
+        }: RawEclipseConsensusState,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             commitment_root: commitment_root.into(),
@@ -120,14 +124,17 @@ impl TryFrom<RawConsensusState> for EclipseConsensusState {
     }
 }
 
-impl Protobuf<RawConsensusState> for EclipseConsensusState {}
+impl Protobuf<RawEclipseConsensusState> for EclipseConsensusState {}
+
+impl KnownProtoWithFrom for EclipseConsensusState {
+    type RawWithFrom = RawEclipseConsensusState;
+}
 
 impl From<EclipseConsensusState> for protobuf::Any {
     fn from(consensus_state: EclipseConsensusState) -> Self {
         Self {
-            type_url: CONSENSUS_STATE_TYPE_URL.to_owned(),
-            value: Protobuf::<RawConsensusState>::encode_vec(&consensus_state)
-                .expect("encoding to `Any` from `EclipseConsensusState`"),
+            type_url: ECLIPSE_CONSENSUS_STATE_TYPE_URL.to_owned(),
+            value: KnownProto::encode(consensus_state),
         }
     }
 }
@@ -138,8 +145,8 @@ impl TryFrom<protobuf::Any> for EclipseConsensusState {
     fn try_from(raw: protobuf::Any) -> Result<Self, Self::Error> {
         use prost::Message;
 
-        if &*raw.type_url == CONSENSUS_STATE_TYPE_URL {
-            RawConsensusState::decode(&*raw.value)
+        if &*raw.type_url == ECLIPSE_CONSENSUS_STATE_TYPE_URL {
+            RawEclipseConsensusState::decode(&*raw.value)
                 .map_err(ClientError::Decode)?
                 .try_into()
                 .map_err(|err: Error| ClientError::ClientSpecific {
@@ -162,7 +169,7 @@ pub struct EclipseHeader {
     pub timestamp: TmTime,
 }
 
-impl From<EclipseHeader> for RawHeader {
+impl From<EclipseHeader> for RawEclipseHeader {
     fn from(
         EclipseHeader {
             height,
@@ -178,15 +185,15 @@ impl From<EclipseHeader> for RawHeader {
     }
 }
 
-impl TryFrom<RawHeader> for EclipseHeader {
+impl TryFrom<RawEclipseHeader> for EclipseHeader {
     type Error = Error;
 
     fn try_from(
-        RawHeader {
+        RawEclipseHeader {
             height,
             commitment_root,
             timestamp,
-        }: RawHeader,
+        }: RawEclipseHeader,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             height: height
@@ -206,14 +213,17 @@ impl TryFrom<RawHeader> for EclipseHeader {
     }
 }
 
-impl Protobuf<RawHeader> for EclipseHeader {}
+impl Protobuf<RawEclipseHeader> for EclipseHeader {}
+
+impl KnownProtoWithFrom for EclipseHeader {
+    type RawWithFrom = RawEclipseHeader;
+}
 
 impl From<EclipseHeader> for protobuf::Any {
-    fn from(consensus_state: EclipseHeader) -> Self {
+    fn from(header: EclipseHeader) -> Self {
         Self {
-            type_url: HEADER_TYPE_URL.to_owned(),
-            value: Protobuf::<RawHeader>::encode_vec(&consensus_state)
-                .expect("encoding to `Any` from `EclipseHeader`"),
+            type_url: ECLIPSE_HEADER_TYPE_URL.to_owned(),
+            value: KnownProto::encode(header),
         }
     }
 }
@@ -224,8 +234,8 @@ impl TryFrom<protobuf::Any> for EclipseHeader {
     fn try_from(raw: protobuf::Any) -> Result<Self, Self::Error> {
         use prost::Message;
 
-        if &*raw.type_url == HEADER_TYPE_URL {
-            RawHeader::decode(&*raw.value)
+        if &*raw.type_url == ECLIPSE_HEADER_TYPE_URL {
+            RawEclipseHeader::decode(&*raw.value)
                 .map_err(ClientError::Decode)?
                 .try_into()
                 .map_err(|err: Error| ClientError::ClientSpecific {
@@ -274,7 +284,7 @@ pub struct EclipseClientState {
     pub frozen_height: Option<Height>,
 }
 
-impl From<EclipseClientState> for RawClientState {
+impl From<EclipseClientState> for RawEclipseClientState {
     fn from(
         EclipseClientState {
             chain_id,
@@ -290,15 +300,15 @@ impl From<EclipseClientState> for RawClientState {
     }
 }
 
-impl TryFrom<RawClientState> for EclipseClientState {
+impl TryFrom<RawEclipseClientState> for EclipseClientState {
     type Error = Error;
 
     fn try_from(
-        RawClientState {
+        RawEclipseClientState {
             chain_id,
             latest_header,
             frozen_height,
-        }: RawClientState,
+        }: RawEclipseClientState,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             chain_id: ChainId::from_string(&chain_id),
@@ -314,14 +324,17 @@ impl TryFrom<RawClientState> for EclipseClientState {
     }
 }
 
-impl Protobuf<RawClientState> for EclipseClientState {}
+impl Protobuf<RawEclipseClientState> for EclipseClientState {}
+
+impl KnownProtoWithFrom for EclipseClientState {
+    type RawWithFrom = RawEclipseClientState;
+}
 
 impl From<EclipseClientState> for protobuf::Any {
     fn from(consensus_state: EclipseClientState) -> Self {
         Self {
-            type_url: CLIENT_STATE_TYPE_URL.to_owned(),
-            value: Protobuf::<RawClientState>::encode_vec(&consensus_state)
-                .expect("encoding to `Any` from `EclipseClientState`"),
+            type_url: ECLIPSE_CLIENT_STATE_TYPE_URL.to_owned(),
+            value: KnownProto::encode(consensus_state),
         }
     }
 }
@@ -332,8 +345,8 @@ impl TryFrom<protobuf::Any> for EclipseClientState {
     fn try_from(raw: protobuf::Any) -> Result<Self, Self::Error> {
         use prost::Message;
 
-        if &*raw.type_url == CLIENT_STATE_TYPE_URL {
-            RawClientState::decode(&*raw.value)
+        if &*raw.type_url == ECLIPSE_CLIENT_STATE_TYPE_URL {
+            RawEclipseClientState::decode(&*raw.value)
                 .map_err(ClientError::Decode)?
                 .try_into()
                 .map_err(|err: Error| ClientError::ClientSpecific {
@@ -480,8 +493,7 @@ impl ClientState for EclipseClientState {
             key_path: client_upgrade_path,
         };
 
-        let client_state_value = Protobuf::<RawClientState>::encode_vec(&upgraded_client_state)
-            .map_err(ClientError::Encode)?;
+        let client_state_value = KnownProto::encode(upgraded_client_state);
 
         merkle_proof_upgrade_client
             .verify_membership(
@@ -501,9 +513,7 @@ impl ClientState for EclipseClientState {
             key_path: consensus_upgrade_path,
         };
 
-        let consensus_state_value =
-            Protobuf::<RawConsensusState>::encode_vec(&upgraded_consensus_state)
-                .map_err(ClientError::Encode)?;
+        let consensus_state_value = KnownProto::encode(upgraded_consensus_state);
 
         merkle_proof_upgrade_consensus_state
             .verify_membership(

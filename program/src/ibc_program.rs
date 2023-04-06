@@ -19,25 +19,22 @@ use {
 /// Returns an error if processing the instruction fails due to any of the
 /// errors listed in `InstructionError`.
 pub fn process_instruction(
-    first_instruction_account: IndexOfAccount,
+    _first_instruction_account: IndexOfAccount,
     invoke_context: &mut InvokeContext,
 ) -> Result<(), InstructionError> {
     let transaction_context = &invoke_context.transaction_context;
     let instruction_context = transaction_context.get_current_instruction_context()?;
 
-    let mut ibc_account = instruction_context
-        .try_borrow_instruction_account(transaction_context, first_instruction_account)?;
-    if *ibc_account.get_owner() != id() {
-        return Err(InstructionError::InvalidAccountOwner);
-    }
-
-    let calling_account = instruction_context
-        .try_borrow_instruction_account(transaction_context, first_instruction_account + 1)?;
-    if !calling_account.is_executable() {
-        return Err(InstructionError::AccountNotExecutable);
-    }
+    let calling_account =
+        instruction_context.try_borrow_instruction_account(transaction_context, 0)?;
     if !calling_account.is_signer() {
         return Err(InstructionError::MissingRequiredSignature);
+    }
+
+    let mut ibc_account =
+        instruction_context.try_borrow_instruction_account(transaction_context, 1)?;
+    if *ibc_account.get_owner() != id() {
+        return Err(InstructionError::InvalidAccountOwner);
     }
 
     let sysvar_cache = invoke_context.get_sysvar_cache();

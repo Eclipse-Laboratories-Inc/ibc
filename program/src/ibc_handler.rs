@@ -1,9 +1,12 @@
-use crate::all_module_ids::AllModuleIds;
-
 use {
     crate::{
+        all_module_ids::AllModuleIds,
         consensus_heights::ConsensusHeights,
         eclipse_chain,
+        eclipse_ibc_client::{
+            EclipseClientState, EclipseConsensusState, ECLIPSE_CLIENT_STATE_TYPE_URL,
+            ECLIPSE_CONSENSUS_STATE_TYPE_URL,
+        },
         ibc_state::{IbcMetadata, IbcState, IbcStore},
         internal_path::{
             AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
@@ -12,6 +15,9 @@ use {
     },
     anyhow::anyhow,
     core::ops::Bound::{Excluded, Unbounded},
+    eclipse_ibc_proto::eclipse::ibc::chain::v1::{
+        ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
+    },
     ibc::{
         clients::ics07_tendermint::{
             client_state::{
@@ -69,7 +75,7 @@ use {
         sysvar::{clock::Clock, slot_hashes::SlotHashes},
     },
     std::{collections::BTreeMap, sync::Arc, time::Duration},
-    tendermint::{hash::Hash as TendermintHash, time::Time as TendermintTime},
+    tendermint::time::Time as TendermintTime,
 };
 
 #[derive(Debug)]
@@ -117,12 +123,11 @@ impl<'a> IbcHandler<'a> {
 
     fn consensus_state(&self, slot: Slot) -> Option<Box<dyn ConsensusState>> {
         let hash = self.slot_hashes.get(&slot)?;
-        Some(Box::new(TendermintConsensusState::new(
-            CommitmentRoot::from_bytes(hash.as_ref()),
+        Some(Box::new(EclipseConsensusState {
+            commitment_root: CommitmentRoot::from_bytes(hash.as_ref()),
             // TODO: Adjust the time based on the slot
-            self.current_time,
-            TendermintHash::None,
-        )))
+            timestamp: self.current_time,
+        }))
     }
 
     pub(super) fn commit(&mut self) -> anyhow::Result<()> {
@@ -148,6 +153,12 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         if let Some(client_state) = client_state
             .as_any()
             .downcast_ref::<TendermintClientState>()
+        {
+            self.state
+                .set(&client_state_path.to_string(), client_state.clone());
+            Ok(())
+        } else if let Some(client_state) =
+            client_state.as_any().downcast_ref::<EclipseClientState>()
         {
             self.state
                 .set(&client_state_path.to_string(), client_state.clone());
@@ -190,6 +201,13 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         if let Some(consensus_state) = consensus_state
             .as_any()
             .downcast_ref::<TendermintConsensusState>()
+        {
+            self.state
+                .set(&consensus_state_path.to_string(), consensus_state.clone());
+            Ok(())
+        } else if let Some(consensus_state) = consensus_state
+            .as_any()
+            .downcast_ref::<EclipseConsensusState>()
         {
             self.state
                 .set(&consensus_state_path.to_string(), consensus_state.clone());
@@ -356,6 +374,14 @@ fn decode_consensus_state(
                 description: err.to_string(),
             })?,
         )),
+        ECLIPSE_CONSENSUS_STATE_TYPE_URL => Ok(Box::new(
+            <EclipseConsensusState as Protobuf<RawEclipseConsensusState>>::decode_vec(
+                &consensus_state.value,
+            )
+            .map_err(|err| ClientError::Other {
+                description: err.to_string(),
+            })?,
+        )),
         _ => Err(ClientError::UnknownConsensusStateType {
             consensus_state_type: consensus_state.type_url,
         }
@@ -385,6 +411,14 @@ impl<'a> ValidationContext for IbcHandler<'a> {
         match &*client_state.type_url {
             TENDERMINT_CLIENT_STATE_TYPE_URL => Ok(Box::new(
                 <TendermintClientState as Protobuf<RawTmClientState>>::decode_vec(
+                    &client_state.value,
+                )
+                .map_err(|err| ClientError::Other {
+                    description: err.to_string(),
+                })?,
+            )),
+            ECLIPSE_CLIENT_STATE_TYPE_URL => Ok(Box::new(
+                <EclipseClientState as Protobuf<RawEclipseClientState>>::decode_vec(
                     &client_state.value,
                 )
                 .map_err(|err| ClientError::Other {
