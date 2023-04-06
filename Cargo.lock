@@ -891,18 +891,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
- "derive_more",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
+ "eclipse-ibc-state",
  "hex",
  "ibc",
  "ibc-proto",
- "ics23",
- "jmt",
  "known-proto",
- "prost",
  "serde",
- "sha2 0.10.6",
  "solana-program-runtime",
  "solana-sdk",
  "tendermint",
@@ -921,6 +917,25 @@ dependencies = [
  "tendermint-proto",
  "tonic 0.9.1",
  "tonic-build",
+]
+
+[[package]]
+name = "eclipse-ibc-state"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "derive_more",
+ "eclipse-ibc-proto",
+ "ibc",
+ "ibc-proto",
+ "ics23",
+ "jmt",
+ "known-proto",
+ "serde",
+ "sha2 0.10.6",
+ "solana-program-runtime",
+ "solana-sdk",
 ]
 
 [[package]]

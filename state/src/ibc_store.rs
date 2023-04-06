@@ -1,22 +1,8 @@
 use {
     anyhow::{anyhow, bail},
-    core::{
-        fmt::{self, Debug},
-        mem,
-    },
-    ibc_proto::ibc::core::commitment::v1::MerkleRoot,
-    ics23::ExistenceProof,
-    jmt::{
-        storage::{TreeReader, TreeWriter},
-        Sha256Jmt,
-    },
-    known_proto::KnownProto,
+    core::fmt::Debug,
+    jmt::storage::{TreeReader, TreeWriter},
     serde::{Deserialize, Serialize},
-    sha2::Sha256,
-    solana_program_runtime::{ic_msg, invoke_context::InvokeContext},
-    solana_sdk::{
-        clock::Slot, instruction::InstructionError, transaction_context::BorrowedAccount,
-    },
     std::{
         collections::{BTreeMap, HashMap},
         sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
@@ -102,7 +88,7 @@ mod store_nodes {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(transparent)]
-pub(super) struct IbcStore {
+pub struct IbcStore {
     inner: RwLock<InnerStore>,
 }
 
@@ -177,145 +163,6 @@ impl TreeWriter for IbcStore {
             versions.insert(*version, value.clone());
         }
 
-        Ok(())
-    }
-}
-
-pub(super) struct IbcState<'a> {
-    state_jmt: Sha256Jmt<'a, IbcStore>,
-    pending_changes: BTreeMap<jmt::KeyHash, Option<Vec<u8>>>,
-    version: jmt::Version,
-}
-
-impl Debug for IbcState<'_> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("IbcState")
-            .field("state_jmt", &"<opaque>")
-            .field("pending_changes", &self.pending_changes)
-            .field("version", &self.version)
-            .finish()
-    }
-}
-
-impl<'a> IbcState<'a> {
-    #[must_use]
-    pub(super) fn new(state_store: &'a IbcStore, slot: Slot) -> Self {
-        Self {
-            state_jmt: Sha256Jmt::new(state_store),
-            pending_changes: BTreeMap::new(),
-            // Slots map directly to versions
-            version: slot,
-        }
-    }
-
-    #[allow(unused)]
-    pub(super) fn get_root(&self) -> anyhow::Result<MerkleRoot> {
-        let jmt::RootHash(root_hash) = self.state_jmt.get_root_hash(self.version)?;
-        Ok(MerkleRoot {
-            hash: root_hash.to_vec(),
-        })
-    }
-
-    pub(super) fn get<T>(&self, key: &str) -> anyhow::Result<Option<T>>
-    where
-        T: KnownProto,
-    {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
-        if let Some(owned_value) = self.pending_changes.get(&key_hash) {
-            return owned_value
-                .as_ref()
-                .map(|value| T::decode(&**value))
-                .transpose();
-        }
-
-        self.state_jmt
-            .get(key_hash, self.version)?
-            .map(|owned_value| T::decode(&*owned_value))
-            .transpose()
-    }
-
-    #[allow(unused)]
-    pub(super) fn get_proof(&self, key: &str) -> anyhow::Result<ExistenceProof> {
-        self.state_jmt
-            .get_with_ics23_proof(key.as_bytes().to_vec(), self.version)
-    }
-
-    pub(super) fn set<T>(&mut self, key: &str, value: T)
-    where
-        T: KnownProto,
-    {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
-        self.pending_changes
-            .insert(key_hash, Some(T::encode(value)));
-    }
-
-    pub(super) fn update<T, F>(&mut self, key: &str, f: F) -> anyhow::Result<()>
-    where
-        T: Default + KnownProto,
-        F: FnOnce(&mut T),
-    {
-        let mut value: T = self.get(key)?.unwrap_or_default();
-        f(&mut value);
-        self.set(key, value);
-        Ok(())
-    }
-
-    pub(super) fn remove(&mut self, key: &str) {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
-        self.pending_changes.insert(key_hash, None);
-    }
-
-    pub(super) fn commit(&mut self) -> anyhow::Result<()> {
-        let pending_changes = mem::take(&mut self.pending_changes);
-        self.state_jmt
-            .put_value_set(pending_changes, self.version)?;
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub(super) struct IbcMetadata {
-    pub client_id_counter: u64,
-    pub connection_id_counter: u64,
-    pub channel_id_counter: u64,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub(super) struct IbcAccountData {
-    pub store: IbcStore,
-    pub metadata: IbcMetadata,
-}
-
-impl IbcAccountData {
-    pub(super) fn read_from_account(
-        account: &BorrowedAccount<'_>,
-        invoke_context: &InvokeContext,
-    ) -> Result<Self, InstructionError> {
-        let account_data = account.get_data();
-        bincode::deserialize::<Self>(account_data).map_err(|err| {
-            ic_msg!(
-                invoke_context,
-                "failed to deserialize IBC account data: {:?}",
-                err,
-            );
-            InstructionError::InvalidAccountData
-        })
-    }
-
-    pub(super) fn write_to_account(
-        &self,
-        account: &mut BorrowedAccount<'_>,
-        invoke_context: &InvokeContext,
-    ) -> Result<(), InstructionError> {
-        let account_data = bincode::serialize(&self).map_err(|err| {
-            ic_msg!(
-                invoke_context,
-                "failed to serialize new IBC account data: {:?}",
-                err,
-            );
-            InstructionError::InvalidAccountData
-        })?;
-        account.set_data(account_data)?;
         Ok(())
     }
 }

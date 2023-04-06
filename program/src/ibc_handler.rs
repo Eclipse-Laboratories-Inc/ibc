@@ -1,13 +1,5 @@
 use {
-    crate::{
-        all_module_ids::AllModuleIds,
-        consensus_heights::ConsensusHeights,
-        ibc_state::{IbcMetadata, IbcState, IbcStore},
-        internal_path::{
-            AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
-        },
-        module_instruction::*,
-    },
+    crate::module_instruction::*,
     anyhow::anyhow,
     core::ops::Bound::{Excluded, Unbounded},
     eclipse_ibc_light_client::{
@@ -16,6 +8,12 @@ use {
     },
     eclipse_ibc_proto::eclipse::ibc::chain::v1::{
         ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
+    },
+    eclipse_ibc_state::{
+        internal_path::{
+            AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
+        },
+        AllModuleIds, ConsensusHeights, IbcMetadata, IbcState, IbcStore,
     },
     ibc::{
         clients::ics07_tendermint::{
