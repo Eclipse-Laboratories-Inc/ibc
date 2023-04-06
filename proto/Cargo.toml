@@ -1,0 +1,20 @@
+[package]
+name = "eclipse-ibc-proto"
+description = "Eclipse IBC Protobuf types"
+version = "0.1.0"
+homepage = "https://eclipse.builders/"
+repository = "https://github.com/Eclipse-Laboratories-Inc/ibc"
+authors = ["Eclipse Developers"]
+edition = "2021"
+
+[dependencies]
+ibc-proto = "0.26.0"
+prost = "0.11.8"
+prost-types = "0.11.8"
+serde = "1.0.159"
+tendermint-proto = "0.29.1"
+tonic = "0.8.3"
+
+[build-dependencies]
+prost-build = "0.11.8"
+tonic-build = "0.8.4"

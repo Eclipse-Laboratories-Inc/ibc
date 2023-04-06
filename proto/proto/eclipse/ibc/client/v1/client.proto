@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package eclipse.ibc.client.v1;
+
+import "ibc/core/client/v1/client.proto";
+
+message ConsensusHeights {
+  repeated .ibc.core.client.v1.Height heights = 1;
+}
+
+message AllModuleIds {
+  repeated string modules = 1;
+}

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package eclipse.ibc.chain.v1;
+
+import "google/protobuf/timestamp.proto";
+import "ibc/core/client/v1/client.proto";
+
+message ConsensusState {
+  bytes commitment_root = 1;
+  .google.protobuf.Timestamp timestamp = 2;
+}
+
+message Header {
+  .ibc.core.client.v1.Height height = 1;
+  bytes commitment_root = 2;
+  .google.protobuf.Timestamp timestamp = 3;
+}
+
+message ClientState {
+  string chain_id = 1;
+  Header latest_header = 2;
+  .ibc.core.client.v1.Height frozen_height = 3;
+}

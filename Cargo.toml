@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "program",
+    "proto",
+]
+
+[patch.crates-io.solana-frozen-abi]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-frozen-abi-macro]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-logger]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-metrics]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-program]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-program-runtime]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-sdk]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+[patch.crates-io.solana-sdk-macro]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
+
+# Do not include solana-zk-token-sdk as it causes compile errors.

@@ -1,0 +1,10 @@
+version: v1
+name: buf.build/Eclipse-Laboratories-Inc/ibc
+deps:
+  - buf.build/cosmos/ibc
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT

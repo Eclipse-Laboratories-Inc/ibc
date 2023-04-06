@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package eclipse.ibc.port.v1;
+
+message MsgBindPort {
+  string port_id = 1;
+}
+
+message MsgReleasePort {
+  string port_id = 1;
+}
