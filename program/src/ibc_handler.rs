@@ -2,11 +2,6 @@ use {
     crate::{
         all_module_ids::AllModuleIds,
         consensus_heights::ConsensusHeights,
-        eclipse_chain,
-        eclipse_ibc_client::{
-            EclipseClientState, EclipseConsensusState, ECLIPSE_CLIENT_STATE_TYPE_URL,
-            ECLIPSE_CONSENSUS_STATE_TYPE_URL,
-        },
         ibc_state::{IbcMetadata, IbcState, IbcStore},
         internal_path::{
             AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
@@ -15,6 +10,10 @@ use {
     },
     anyhow::anyhow,
     core::ops::Bound::{Excluded, Unbounded},
+    eclipse_ibc_light_client::{
+        eclipse_chain, EclipseClientState, EclipseConsensusState, ECLIPSE_CLIENT_STATE_TYPE_URL,
+        ECLIPSE_CONSENSUS_STATE_TYPE_URL,
+    },
     eclipse_ibc_proto::eclipse::ibc::chain::v1::{
         ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
     },

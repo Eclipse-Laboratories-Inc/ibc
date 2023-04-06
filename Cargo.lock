@@ -869,26 +869,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abe71d579d1812060163dff96056261deb5bf6729b100fa2e36a68b9649ba3d3"
 
 [[package]]
+name = "eclipse-ibc-light-client"
+version = "0.1.0"
+dependencies = [
+ "eclipse-ibc-proto",
+ "ibc",
+ "ibc-proto",
+ "ics23",
+ "jmt",
+ "known-proto",
+ "prost",
+ "serde",
+ "solana-sdk",
+ "tendermint",
+ "thiserror",
+]
+
+[[package]]
 name = "eclipse-ibc-program"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
- "bytes",
  "derive_more",
+ "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
  "hex",
  "ibc",
  "ibc-proto",
  "ics23",
  "jmt",
+ "known-proto",
  "prost",
  "serde",
  "sha2 0.10.6",
  "solana-program-runtime",
  "solana-sdk",
  "tendermint",
- "tendermint-proto",
  "thiserror",
 ]
 
@@ -1680,6 +1697,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3afef3b6eff9ce9d8ff9b3601125eec7f0c8cbac7abd14f355d053fa56c98768"
 dependencies = [
  "cpufeatures",
+]
+
+[[package]]
+name = "known-proto"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "ibc",
+ "ibc-proto",
+ "prost",
+ "tendermint",
+ "tendermint-proto",
 ]
 
 [[package]]

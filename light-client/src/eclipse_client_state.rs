@@ -1,48 +1,35 @@
 use {
-    crate::{
-        eclipse_chain,
-        known_proto::{KnownProto, KnownProtoWithFrom},
-    },
+    crate::{eclipse_chain, error::Error, EclipseConsensusState, EclipseHeader},
     core::time::Duration,
-    eclipse_ibc_proto::eclipse::ibc::chain::v1::{
-        ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
-        Header as RawEclipseHeader,
-    },
-    ibc::{
-        core::{
-            context::{ContextError, ValidationContext},
-            ics02_client::{
-                client_state::{ClientState, UpdatedState},
-                client_type::ClientType,
-                consensus_state::ConsensusState,
-                error::ClientError,
-                header::Header,
-                height::Height,
-            },
-            ics23_commitment::{
-                commitment::{CommitmentPrefix, CommitmentProofBytes, CommitmentRoot},
-                merkle::{self, MerkleProof},
-            },
-            ics24_host::{
-                identifier::{ChainId, ClientId},
-                path::{ClientUpgradePath, Path},
-            },
+    eclipse_ibc_proto::eclipse::ibc::chain::v1::ClientState as RawEclipseClientState,
+    ibc::core::{
+        context::{ContextError, ValidationContext},
+        ics02_client::{
+            client_state::{ClientState, UpdatedState},
+            client_type::ClientType,
+            consensus_state::ConsensusState,
+            error::ClientError,
+            height::Height,
         },
-        timestamp::Timestamp,
+        ics23_commitment::{
+            commitment::{CommitmentPrefix, CommitmentProofBytes, CommitmentRoot},
+            merkle::{self, MerkleProof},
+        },
+        ics24_host::{
+            identifier::{ChainId, ClientId},
+            path::{ClientUpgradePath, Path},
+        },
     },
     ibc_proto::{
         google::protobuf,
         ibc::core::commitment::v1::{MerklePath, MerkleProof as RawMerkleProof, MerkleRoot},
         protobuf::Protobuf,
     },
+    known_proto::{KnownProto, KnownProtoWithFrom},
     serde::Serialize,
-    tendermint::{error::Error as TmError, time::Time as TmTime},
-    thiserror::Error,
 };
 
 const CLIENT_TYPE: &str = "xx-eclipse";
-pub const ECLIPSE_CONSENSUS_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ConsensusState";
-pub const ECLIPSE_HEADER_TYPE_URL: &str = "/eclipse.ibc.v1.chain.Header";
 pub const ECLIPSE_CLIENT_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ClientState";
 
 fn client_type() -> ClientType {
@@ -55,224 +42,6 @@ fn client_err_from_context(err: ContextError) -> ClientError {
         _ => ClientError::Other {
             description: err.to_string(),
         },
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("invalid raw consensus state due to a missing field: {missing_field}")]
-    MissingFieldInRawConsensusState { missing_field: &'static str },
-    #[error("invalid raw header due to a missing field: {missing_field}")]
-    MissingFieldInRawHeader { missing_field: &'static str },
-    #[error("invalid raw client state due to a missing field: {missing_field}")]
-    MissingFieldInRawClientState { missing_field: &'static str },
-    #[error("Tendermint error: {0}")]
-    Tendermint(TmError),
-    #[error("IBC client error: {0}")]
-    Client(ClientError),
-}
-
-// TODO: Store state in a sysvar
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct EclipseConsensusState {
-    pub commitment_root: CommitmentRoot,
-    pub timestamp: TmTime,
-}
-
-impl ConsensusState for EclipseConsensusState {
-    fn root(&self) -> &CommitmentRoot {
-        &self.commitment_root
-    }
-
-    fn timestamp(&self) -> Timestamp {
-        self.timestamp.into()
-    }
-}
-
-impl From<EclipseConsensusState> for RawEclipseConsensusState {
-    fn from(
-        EclipseConsensusState {
-            commitment_root,
-            timestamp,
-        }: EclipseConsensusState,
-    ) -> Self {
-        Self {
-            commitment_root: commitment_root.into_vec(),
-            timestamp: Some(timestamp.into()),
-        }
-    }
-}
-
-impl TryFrom<RawEclipseConsensusState> for EclipseConsensusState {
-    type Error = Error;
-
-    fn try_from(
-        RawEclipseConsensusState {
-            commitment_root,
-            timestamp,
-        }: RawEclipseConsensusState,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            commitment_root: commitment_root.into(),
-            timestamp: timestamp
-                .ok_or(Error::MissingFieldInRawConsensusState {
-                    missing_field: "timestamp",
-                })?
-                .try_into()
-                .map_err(Error::Tendermint)?,
-        })
-    }
-}
-
-impl Protobuf<RawEclipseConsensusState> for EclipseConsensusState {}
-
-impl KnownProtoWithFrom for EclipseConsensusState {
-    type RawWithFrom = RawEclipseConsensusState;
-}
-
-impl From<EclipseConsensusState> for protobuf::Any {
-    fn from(consensus_state: EclipseConsensusState) -> Self {
-        Self {
-            type_url: ECLIPSE_CONSENSUS_STATE_TYPE_URL.to_owned(),
-            value: KnownProto::encode(consensus_state),
-        }
-    }
-}
-
-impl TryFrom<protobuf::Any> for EclipseConsensusState {
-    type Error = ClientError;
-
-    fn try_from(raw: protobuf::Any) -> Result<Self, Self::Error> {
-        use prost::Message;
-
-        if &*raw.type_url == ECLIPSE_CONSENSUS_STATE_TYPE_URL {
-            RawEclipseConsensusState::decode(&*raw.value)
-                .map_err(ClientError::Decode)?
-                .try_into()
-                .map_err(|err: Error| ClientError::ClientSpecific {
-                    description: err.to_string(),
-                })
-        } else {
-            Err(ClientError::UnknownConsensusStateType {
-                consensus_state_type: raw.type_url,
-            })
-        }
-    }
-}
-
-impl Protobuf<protobuf::Any> for EclipseConsensusState {}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct EclipseHeader {
-    pub height: Height,
-    pub commitment_root: CommitmentRoot,
-    pub timestamp: TmTime,
-}
-
-impl From<EclipseHeader> for RawEclipseHeader {
-    fn from(
-        EclipseHeader {
-            height,
-            commitment_root,
-            timestamp,
-        }: EclipseHeader,
-    ) -> Self {
-        Self {
-            height: Some(height.into()),
-            commitment_root: commitment_root.into_vec(),
-            timestamp: Some(timestamp.into()),
-        }
-    }
-}
-
-impl TryFrom<RawEclipseHeader> for EclipseHeader {
-    type Error = Error;
-
-    fn try_from(
-        RawEclipseHeader {
-            height,
-            commitment_root,
-            timestamp,
-        }: RawEclipseHeader,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            height: height
-                .ok_or(Error::MissingFieldInRawHeader {
-                    missing_field: "latest_height",
-                })?
-                .try_into()
-                .map_err(Error::Client)?,
-            commitment_root: commitment_root.into(),
-            timestamp: timestamp
-                .ok_or(Error::MissingFieldInRawHeader {
-                    missing_field: "timestamp",
-                })?
-                .try_into()
-                .map_err(Error::Tendermint)?,
-        })
-    }
-}
-
-impl Protobuf<RawEclipseHeader> for EclipseHeader {}
-
-impl KnownProtoWithFrom for EclipseHeader {
-    type RawWithFrom = RawEclipseHeader;
-}
-
-impl From<EclipseHeader> for protobuf::Any {
-    fn from(header: EclipseHeader) -> Self {
-        Self {
-            type_url: ECLIPSE_HEADER_TYPE_URL.to_owned(),
-            value: KnownProto::encode(header),
-        }
-    }
-}
-
-impl TryFrom<protobuf::Any> for EclipseHeader {
-    type Error = ClientError;
-
-    fn try_from(raw: protobuf::Any) -> Result<Self, Self::Error> {
-        use prost::Message;
-
-        if &*raw.type_url == ECLIPSE_HEADER_TYPE_URL {
-            RawEclipseHeader::decode(&*raw.value)
-                .map_err(ClientError::Decode)?
-                .try_into()
-                .map_err(|err: Error| ClientError::ClientSpecific {
-                    description: err.to_string(),
-                })
-        } else {
-            Err(ClientError::UnknownHeaderType {
-                header_type: raw.type_url,
-            })
-        }
-    }
-}
-
-impl Protobuf<protobuf::Any> for EclipseHeader {}
-
-impl From<EclipseHeader> for EclipseConsensusState {
-    fn from(
-        EclipseHeader {
-            commitment_root,
-            timestamp,
-            ..
-        }: EclipseHeader,
-    ) -> Self {
-        Self {
-            commitment_root,
-            timestamp,
-        }
-    }
-}
-
-impl Header for EclipseHeader {
-    fn height(&self) -> Height {
-        self.height
-    }
-
-    fn timestamp(&self) -> Timestamp {
-        self.timestamp.into()
     }
 }
 

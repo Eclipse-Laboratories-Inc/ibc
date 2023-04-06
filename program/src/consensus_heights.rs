@@ -1,8 +1,8 @@
 use {
-    crate::known_proto::KnownProtoWithFrom,
     eclipse_ibc_proto::eclipse::ibc::client::v1::ConsensusHeights as RawConsensusHeights,
     ibc::core::ics02_client::{error::ClientError, height::Height},
     ibc_proto::ibc::core::client::v1::Height as RawHeight,
+    known_proto::KnownProtoWithFrom,
     std::collections::BTreeSet,
 };
 

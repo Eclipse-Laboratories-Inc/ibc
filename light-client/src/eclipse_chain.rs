@@ -10,18 +10,17 @@ use {
 };
 
 /// Target slot time is 400ms but in practice Solana goes up to 600ms
-pub(crate) const MAX_EXPECTED_SLOT_TIME: Duration = Duration::from_millis(600);
-pub(crate) const IBC_MESSAGE_VALID_DURATION: Duration = Duration::from_secs(3600);
-pub(crate) const CHAIN_NAME_PREFIX: &str = "eclipse";
-pub(crate) const UPGRADE_PREFIX: &str = "eclipse-upgrade";
+pub const MAX_EXPECTED_SLOT_TIME: Duration = Duration::from_millis(600);
+pub const IBC_MESSAGE_VALID_DURATION: Duration = Duration::from_secs(3600);
+pub const CHAIN_NAME_PREFIX: &str = "eclipse";
+pub const UPGRADE_PREFIX: &str = "eclipse-upgrade";
 const REVISION_NUMBER: u64 = 0;
 
-#[allow(unused)]
-pub(crate) fn chain_id(chain_name: &str) -> ChainId {
+pub fn chain_id(chain_name: &str) -> ChainId {
     ChainId::new(format!("{CHAIN_NAME_PREFIX}-{chain_name}"), REVISION_NUMBER)
 }
 
-pub(crate) fn height_of_slot(slot: Slot) -> Result<Height, ClientError> {
+pub fn height_of_slot(slot: Slot) -> Result<Height, ClientError> {
     // clock.slot starts at 0, so we add 1 for the height
     let revision_height = slot
         .checked_add(1)
@@ -29,7 +28,7 @@ pub(crate) fn height_of_slot(slot: Slot) -> Result<Height, ClientError> {
     Height::new(REVISION_NUMBER, revision_height)
 }
 
-pub(crate) fn slot_of_height(height: Height) -> Result<Slot, ClientError> {
+pub fn slot_of_height(height: Height) -> Result<Slot, ClientError> {
     if height.revision_number() != REVISION_NUMBER {
         return Err(ClientError::InvalidHeight);
     }
@@ -41,12 +40,12 @@ pub(crate) fn slot_of_height(height: Height) -> Result<Slot, ClientError> {
         .ok_or_else(|| ClientError::InvalidHeight)
 }
 
-pub(crate) fn tendermint_time_from_clock(clock: &Clock) -> TendermintTime {
+pub fn tendermint_time_from_clock(clock: &Clock) -> TendermintTime {
     TendermintTime::from_unix_timestamp(clock.unix_timestamp, 0)
         .expect("Unix timestamp from Clock should be valid")
 }
 
-pub(crate) fn proof_specs() -> ProofSpecs {
+pub fn proof_specs() -> ProofSpecs {
     // TODO: Figure out top-level proof spec to use
     vec![ics23::iavl_spec(), jmt::ics23_spec()].into()
 }

@@ -1,5 +1,4 @@
 use {
-    crate::known_proto::{KnownProto, KnownProtoWithFrom},
     ibc::{
         core::{
             ics02_client::msgs::ClientMsg,
@@ -10,16 +9,17 @@ use {
         tx_msg::Msg as _,
     },
     ibc_proto::google::protobuf,
+    known_proto::{KnownProto, KnownProtoWithFrom},
     thiserror::Error,
 };
 
 pub(super) mod msgs {
     use {
-        crate::known_proto::KnownProtoWithFrom,
         eclipse_ibc_proto::eclipse::ibc::port::v1::{
             MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort,
         },
         ibc::{core::ics24_host::identifier::PortId, tx_msg::Msg},
+        known_proto::KnownProtoWithFrom,
         std::str::FromStr,
     };
 

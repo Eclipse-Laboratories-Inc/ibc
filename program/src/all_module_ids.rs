@@ -1,9 +1,9 @@
 use {
-    crate::known_proto::KnownProtoWithFrom,
     anyhow::anyhow,
     core::str::FromStr,
     eclipse_ibc_proto::eclipse::ibc::client::v1::AllModuleIds as RawAllModuleIds,
     ibc::core::ics26_routing::context::{InvalidModuleId, ModuleId},
+    known_proto::KnownProtoWithFrom,
     std::collections::HashSet,
 };
 

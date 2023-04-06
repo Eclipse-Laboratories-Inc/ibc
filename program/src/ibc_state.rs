@@ -1,5 +1,4 @@
 use {
-    crate::known_proto::KnownProto,
     anyhow::{anyhow, bail},
     core::{
         fmt::{self, Debug},
@@ -11,6 +10,7 @@ use {
         storage::{TreeReader, TreeWriter},
         Sha256Jmt,
     },
+    known_proto::KnownProto,
     serde::{Deserialize, Serialize},
     sha2::Sha256,
     solana_program_runtime::{ic_msg, invoke_context::InvokeContext},
