@@ -1,12 +1,18 @@
 [workspace]
 resolver = "2"
 members = [
+    "cli",
     "known-proto",
     "light-client",
     "program",
     "proto",
     "state",
 ]
+
+[patch.crates-io.solana-client]
+git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
+branch = "eclipse/v1.15.2"
+version = "=1.15.2"
 
 [patch.crates-io.solana-frozen-abi]
 git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"

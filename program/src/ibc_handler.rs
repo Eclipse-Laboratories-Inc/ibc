@@ -13,7 +13,7 @@ use {
         internal_path::{
             AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
         },
-        AllModuleIds, ConsensusHeights, IbcMetadata, IbcState, IbcStore,
+        AllModuleIds, ClientConnections, ConsensusHeights, IbcMetadata, IbcState, IbcStore,
     },
     ibc::{
         clients::ics07_tendermint::{
@@ -260,7 +260,15 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         connection_id: ConnectionId,
     ) -> Result<(), ContextError> {
         self.state
-            .set(&client_connection_path.to_string(), connection_id);
+            .update(
+                &client_connection_path.to_string(),
+                |client_connections: &mut ClientConnections| {
+                    client_connections.connections.insert(connection_id);
+                },
+            )
+            .map_err(|err| ConnectionError::Other {
+                description: err.to_string(),
+            })?;
         Ok(())
     }
 

@@ -11,3 +11,7 @@ message ConsensusHeights {
 message AllModuleIds {
   repeated string modules = 1;
 }
+
+message ClientConnections {
+  repeated string connections = 1;
+}

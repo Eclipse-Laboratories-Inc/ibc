@@ -66,6 +66,25 @@ impl<'a> IbcState<'a> {
             .transpose()
     }
 
+    pub fn get_raw<T>(&self, key: &str) -> anyhow::Result<Option<T>>
+    where
+        T: Default + prost::Message,
+    {
+        let key_hash = jmt::KeyHash::with::<Sha256>(key);
+        if let Some(owned_value) = self.pending_changes.get(&key_hash) {
+            return Ok(owned_value
+                .as_ref()
+                .map(|value| T::decode(&**value))
+                .transpose()?);
+        }
+
+        Ok(self
+            .state_jmt
+            .get(key_hash, self.version)?
+            .map(|owned_value| T::decode(&*owned_value))
+            .transpose()?)
+    }
+
     #[allow(unused)]
     pub fn get_proof(&self, key: &str) -> anyhow::Result<ExistenceProof> {
         self.state_jmt

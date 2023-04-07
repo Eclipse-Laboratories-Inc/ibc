@@ -11,6 +11,7 @@ fn main() -> io::Result<()> {
         ".eclipse.ibc.port.v1",
         "#[allow(clippy::module_name_repetitions)]",
     );
+    prost_config.type_attribute(".eclipse", "#[derive(serde::Serialize)]");
 
     tonic_build::configure()
         .build_server(false)
