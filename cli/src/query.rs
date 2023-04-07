@@ -100,7 +100,7 @@ enum StateKind {
 }
 
 impl StateKind {
-    fn to_path(self) -> String {
+    fn into_path(self) -> String {
         match self {
             Self::ClientState { client_id } => ClientStatePath(client_id).to_string(),
             Self::ConsensusState {
@@ -174,7 +174,7 @@ impl StateKind {
     }
 
     fn get_json_str(&self, ibc_state: &IbcState<'_>) -> anyhow::Result<String> {
-        let path = self.clone().to_path();
+        let path = self.clone().into_path();
         match self {
             Self::ClientState { .. } => get_json::<protobuf::Any>(ibc_state, &path),
             Self::ConsensusState { .. } => get_json::<protobuf::Any>(ibc_state, &path),
@@ -201,7 +201,7 @@ where
     T: Default + prost::Message + Serialize,
 {
     let raw = ibc_state
-        .get_raw(key)?
+        .get_raw::<T>(key)?
         .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
     Ok(serde_json::to_string_pretty(&raw)?)
 }
@@ -228,7 +228,7 @@ pub(crate) async fn run(
         kind,
     }: Args,
 ) -> anyhow::Result<()> {
-    let path = kind.clone().to_path();
+    let path = kind.clone().into_path();
     println!("{path}:");
 
     let rpc_client = RpcClient::new(endpoint);

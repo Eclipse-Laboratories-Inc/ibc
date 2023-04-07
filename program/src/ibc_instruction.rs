@@ -153,6 +153,7 @@ impl From<PortInstruction> for protobuf::Any {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum IbcInstruction {
     Router(MsgEnvelope),
