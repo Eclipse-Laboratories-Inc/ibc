@@ -18,6 +18,7 @@ fn main() -> io::Result<()> {
         .compile_with_config(
             prost_config,
             &[
+                "proto/eclipse/ibc/admin/v1/admin.proto",
                 "proto/eclipse/ibc/chain/v1/chain.proto",
                 "proto/eclipse/ibc/client/v1/client.proto",
                 "proto/eclipse/ibc/port/v1/port.proto",

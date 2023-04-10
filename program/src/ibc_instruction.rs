@@ -15,12 +15,13 @@ use {
 
 pub(super) mod msgs {
     use {
-        eclipse_ibc_proto::eclipse::ibc::port::v1::{
-            MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort,
+        core::{convert::Infallible, str::FromStr},
+        eclipse_ibc_proto::eclipse::ibc::{
+            admin::v1::MsgInitStorageAccount as RawMsgInitStorageAccount,
+            port::v1::{MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort},
         },
         ibc::{core::ics24_host::identifier::PortId, tx_msg::Msg},
         known_proto::KnownProtoWithFrom,
-        std::str::FromStr,
     };
 
     #[derive(Clone, Debug)]
@@ -29,7 +30,7 @@ pub(super) mod msgs {
     }
 
     impl MsgBindPort {
-        pub(super) const TYPE_URL: &str = "/eclipse.ibc.v1.port.MsgBindPort";
+        pub(super) const TYPE_URL: &str = "/eclipse.ibc.port.v1.MsgBindPort";
     }
 
     impl Msg for MsgBindPort {
@@ -48,7 +49,7 @@ pub(super) mod msgs {
         type Error = <PortId as FromStr>::Err;
 
         fn try_from(RawMsgBindPort { port_id }: RawMsgBindPort) -> Result<Self, Self::Error> {
-            let port_id = PortId::from_str(&port_id)?;
+            let port_id = port_id.parse()?;
             Ok(Self { port_id })
         }
     }
@@ -66,7 +67,7 @@ pub(super) mod msgs {
     }
 
     impl MsgReleasePort {
-        pub(super) const TYPE_URL: &str = "/eclipse.ibc.v1.port.MsgReleasePort";
+        pub(super) const TYPE_URL: &str = "/eclipse.ibc.port.v1.MsgReleasePort";
     }
 
     impl Msg for MsgReleasePort {
@@ -85,7 +86,7 @@ pub(super) mod msgs {
         type Error = <PortId as FromStr>::Err;
 
         fn try_from(RawMsgReleasePort { port_id }: RawMsgReleasePort) -> Result<Self, Self::Error> {
-            let port_id = PortId::from_str(&port_id)?;
+            let port_id = port_id.parse()?;
             Ok(Self { port_id })
         }
     }
@@ -94,6 +95,41 @@ pub(super) mod msgs {
         fn from(MsgReleasePort { port_id }: MsgReleasePort) -> Self {
             let port_id = port_id.to_string();
             Self { port_id }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct MsgInitStorageAccount;
+
+    impl MsgInitStorageAccount {
+        pub(super) const TYPE_URL: &str = "/eclipse.ibc.admin.v1.MsgInitStorageAccount";
+    }
+
+    impl Msg for MsgInitStorageAccount {
+        type Raw = RawMsgInitStorageAccount;
+
+        fn type_url(&self) -> String {
+            Self::TYPE_URL.to_owned()
+        }
+    }
+
+    impl KnownProtoWithFrom for MsgInitStorageAccount {
+        type RawWithFrom = RawMsgInitStorageAccount;
+    }
+
+    impl TryFrom<RawMsgInitStorageAccount> for MsgInitStorageAccount {
+        type Error = Infallible;
+
+        fn try_from(
+            RawMsgInitStorageAccount {}: RawMsgInitStorageAccount,
+        ) -> Result<Self, Self::Error> {
+            Ok(Self)
+        }
+    }
+
+    impl From<MsgInitStorageAccount> for RawMsgInitStorageAccount {
+        fn from(MsgInitStorageAccount: MsgInitStorageAccount) -> Self {
+            Self {}
         }
     }
 }
@@ -105,7 +141,7 @@ pub enum PortInstruction {
 }
 
 #[derive(Debug, Error)]
-pub enum PortInstructionError {
+pub enum ProtoError {
     #[error("the message is malformed and cannot be decoded: {0}")]
     MalformedMessageBytes(anyhow::Error),
     #[error("unknown type URL: {url}")]
@@ -117,21 +153,21 @@ impl KnownProtoWithFrom for PortInstruction {
 }
 
 impl TryFrom<protobuf::Any> for PortInstruction {
-    type Error = PortInstructionError;
+    type Error = ProtoError;
 
     fn try_from(any_msg: protobuf::Any) -> Result<Self, Self::Error> {
         match &*any_msg.type_url {
             msgs::MsgBindPort::TYPE_URL => {
                 let msg = msgs::MsgBindPort::decode(&*any_msg.value)
-                    .map_err(PortInstructionError::MalformedMessageBytes)?;
+                    .map_err(ProtoError::MalformedMessageBytes)?;
                 Ok(Self::Bind(msg))
             }
             msgs::MsgReleasePort::TYPE_URL => {
                 let msg = msgs::MsgReleasePort::decode(&*any_msg.value)
-                    .map_err(PortInstructionError::MalformedMessageBytes)?;
+                    .map_err(ProtoError::MalformedMessageBytes)?;
                 Ok(Self::Release(msg))
             }
-            _ => Err(PortInstructionError::UnknownMessageTypeUrl {
+            _ => Err(ProtoError::UnknownMessageTypeUrl {
                 url: any_msg.type_url,
             }),
         }
@@ -141,14 +177,44 @@ impl TryFrom<protobuf::Any> for PortInstruction {
 impl From<PortInstruction> for protobuf::Any {
     fn from(port_instruction: PortInstruction) -> Self {
         match port_instruction {
-            PortInstruction::Bind(msg_bind_port) => Self {
-                type_url: msgs::MsgBindPort::TYPE_URL.to_owned(),
-                value: msg_bind_port.encode(),
-            },
-            PortInstruction::Release(msg_release_port) => Self {
-                type_url: msgs::MsgReleasePort::TYPE_URL.to_owned(),
-                value: msg_release_port.encode(),
-            },
+            PortInstruction::Bind(msg_bind_port) => msg_bind_port.to_any(),
+            PortInstruction::Release(msg_release_port) => msg_release_port.to_any(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AdminInstruction {
+    InitStorageAccount(msgs::MsgInitStorageAccount),
+}
+
+impl KnownProtoWithFrom for AdminInstruction {
+    type RawWithFrom = protobuf::Any;
+}
+
+impl TryFrom<protobuf::Any> for AdminInstruction {
+    type Error = ProtoError;
+
+    fn try_from(any_msg: protobuf::Any) -> Result<Self, Self::Error> {
+        match &*any_msg.type_url {
+            msgs::MsgInitStorageAccount::TYPE_URL => {
+                let msg = msgs::MsgInitStorageAccount::decode(&*any_msg.value)
+                    .map_err(ProtoError::MalformedMessageBytes)?;
+                Ok(Self::InitStorageAccount(msg))
+            }
+            _ => Err(ProtoError::UnknownMessageTypeUrl {
+                url: any_msg.type_url,
+            }),
+        }
+    }
+}
+
+impl From<AdminInstruction> for protobuf::Any {
+    fn from(admin_instruction: AdminInstruction) -> Self {
+        match admin_instruction {
+            AdminInstruction::InitStorageAccount(msg_init_storage_account) => {
+                msg_init_storage_account.to_any()
+            }
         }
     }
 }
@@ -158,15 +224,19 @@ impl From<PortInstruction> for protobuf::Any {
 pub enum IbcInstruction {
     Router(MsgEnvelope),
     Port(PortInstruction),
+    Admin(AdminInstruction),
 }
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Error)]
 pub enum IbcInstructionError {
-    #[error("failed to parse IBC instruction; router error: {router_err}; port error: {port_err}")]
+    #[error(
+        "failed to parse IBC instruction; router error: {router_err}; port error: {port_err}; admin error: {admin_err}"
+    )]
     UnknownMessageBytes {
         router_err: RouterError,
-        port_err: PortInstructionError,
+        port_err: ProtoError,
+        admin_err: ProtoError,
     },
 }
 
@@ -178,16 +248,23 @@ impl TryFrom<protobuf::Any> for IbcInstruction {
     type Error = IbcInstructionError;
 
     fn try_from(any_msg: protobuf::Any) -> Result<Self, Self::Error> {
-        match any_msg.clone().try_into() {
-            Ok(envelope) => Ok(Self::Router(envelope)),
-            Err(router_err) => match any_msg.try_into() {
-                Ok(port_instruction) => Ok(Self::Port(port_instruction)),
-                Err(port_err) => Err(IbcInstructionError::UnknownMessageBytes {
-                    router_err,
-                    port_err,
-                }),
-            },
-        }
+        let router_err = match any_msg.clone().try_into() {
+            Ok(envelope) => return Ok(Self::Router(envelope)),
+            Err(router_err) => router_err,
+        };
+        let port_err = match any_msg.clone().try_into() {
+            Ok(port_instruction) => return Ok(Self::Port(port_instruction)),
+            Err(port_err) => port_err,
+        };
+        let admin_err = match any_msg.try_into() {
+            Ok(admin_instruction) => return Ok(Self::Admin(admin_instruction)),
+            Err(admin_err) => admin_err,
+        };
+        Err(IbcInstructionError::UnknownMessageBytes {
+            router_err,
+            port_err,
+            admin_err,
+        })
     }
 }
 
@@ -239,6 +316,7 @@ impl From<IbcInstruction> for protobuf::Any {
                 }
             }
             IbcInstruction::Port(port_instruction) => port_instruction.into(),
+            IbcInstruction::Admin(admin_instruction) => admin_instruction.into(),
         }
     }
 }

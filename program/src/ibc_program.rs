@@ -2,8 +2,8 @@ use {
     crate::{
         ibc_handler::IbcHandler,
         ibc_instruction::{
-            msgs::{MsgBindPort, MsgReleasePort},
-            IbcInstruction, PortInstruction,
+            msgs::{MsgBindPort, MsgInitStorageAccount, MsgReleasePort},
+            AdminInstruction, IbcInstruction, PortInstruction,
         },
         id,
     },
@@ -96,6 +96,9 @@ pub fn process_instruction(
                 InstructionError::InvalidInstructionData
             })?;
         }
+        IbcInstruction::Admin(instruction) => match instruction {
+            AdminInstruction::InitStorageAccount(MsgInitStorageAccount) => todo!(),
+        },
     }
 
     ibc_handler.commit().map_err(|err| {
