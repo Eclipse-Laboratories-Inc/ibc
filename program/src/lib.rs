@@ -6,4 +6,4 @@ pub mod module_instruction;
 
 solana_sdk::declare_id!("Ec11pse1bc111111111111111111111111111111111");
 
-pub use ibc_program::process_instruction;
+pub use ibc_program::{process_instruction, STORAGE_KEY};

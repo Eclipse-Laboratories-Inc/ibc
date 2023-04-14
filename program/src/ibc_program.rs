@@ -27,13 +27,15 @@ use {
 const ROUTER_ERR_CODE: u32 = 151;
 const PORT_ERR_CODE: u32 = 152;
 
-const VAULT_SEEDS: &[&[u8]] = &[b"eclipse-ibc"];
+pub const STORAGE_KEY: Pubkey = Pubkey::new_from_array([
+    135, 90, 195, 29, 90, 182, 162, 153, 214, 170, 125, 126, 161, 2, 167, 102, 196, 107, 28, 247,
+    252, 46, 240, 250, 117, 230, 224, 243, 31, 221, 167, 136,
+]);
 
 fn with_ibc_handler<F>(
     invoke_context: &InvokeContext,
     transaction_context: &TransactionContext,
     instruction_context: &InstructionContext,
-    expected_storage_key: Pubkey,
     f: F,
 ) -> Result<(), InstructionError>
 where
@@ -44,7 +46,7 @@ where
     if *storage_account.get_owner() != id() {
         return Err(InstructionError::InvalidAccountOwner);
     }
-    if *storage_account.get_key() != expected_storage_key {
+    if *storage_account.get_key() != STORAGE_KEY {
         return Err(InstructionError::InvalidArgument);
     }
 
@@ -81,19 +83,18 @@ where
 
 fn init_storage_account(
     invoke_context: &mut InvokeContext,
-    expected_storage_key: Pubkey,
     calling_key: Pubkey,
     min_rent_balance: u64,
 ) -> Result<(), InstructionError> {
     invoke_context.native_invoke(
         system_instruction::create_account(
             &calling_key,
-            &expected_storage_key,
+            &STORAGE_KEY,
             min_rent_balance,
             MAX_CPI_INSTRUCTION_DATA_LEN,
             &id(),
         ),
-        &[calling_key, expected_storage_key],
+        &[STORAGE_KEY],
     )?;
 
     let transaction_context = &invoke_context.transaction_context;
@@ -101,7 +102,7 @@ fn init_storage_account(
 
     let mut storage_account =
         instruction_context.try_borrow_instruction_account(transaction_context, 1)?;
-    if *storage_account.get_key() != expected_storage_key {
+    if *storage_account.get_key() != STORAGE_KEY {
         return Err(InstructionError::InvalidArgument);
     }
 
@@ -148,14 +149,11 @@ pub fn process_instruction(
         InstructionError::InvalidInstructionData
     })?;
 
-    let expected_storage_key = Pubkey::create_program_address(VAULT_SEEDS, &id())?;
-
     match ibc_instruction {
         IbcInstruction::Router(envelope) => with_ibc_handler(
             invoke_context,
             transaction_context,
             instruction_context,
-            expected_storage_key,
             |ibc_handler| {
                 dispatch(ibc_handler, envelope).map_err(|err| {
                     ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
@@ -167,7 +165,6 @@ pub fn process_instruction(
             invoke_context,
             transaction_context,
             instruction_context,
-            expected_storage_key,
             |ibc_handler| match instruction {
                 PortInstruction::Bind(MsgBindPort { port_id }) => {
                     ibc_handler
@@ -205,16 +202,35 @@ pub fn process_instruction(
                     // requires `&mut invoke_context`.
                     drop(calling_account);
 
-                    init_storage_account(
-                        invoke_context,
-                        expected_storage_key,
-                        calling_key,
-                        min_rent_balance,
-                    )?;
+                    init_storage_account(invoke_context, calling_key, min_rent_balance)?;
                 }
             }
         }
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const VAULT_SEED: &[u8] = b"eclipse-ibc";
+    const BUMP_SEED: u8 = 254;
+
+    #[test]
+    fn storage_key_is_pda() {
+        let (expected_pda, bump_seed) = Pubkey::find_program_address(&[VAULT_SEED], &id());
+        assert_eq!(
+            expected_pda.to_string(),
+            "A7NJxtiKpEFL4TSTygkKSkf5b2g719DJbvQPRr4moUHD",
+        );
+        assert_eq!(expected_pda, STORAGE_KEY);
+        assert_eq!(bump_seed, BUMP_SEED);
+        assert!(!expected_pda.is_on_curve());
+
+        let actual_pda =
+            Pubkey::create_program_address(&[VAULT_SEED, &[BUMP_SEED]], &id()).unwrap();
+        assert_eq!(expected_pda, actual_pda);
+    }
 }

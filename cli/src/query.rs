@@ -1,6 +1,7 @@
 use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
+    eclipse_ibc_program::STORAGE_KEY,
     eclipse_ibc_proto::eclipse::ibc::client::v1::{
         AllModuleIds as RawAllModuleIds, ClientConnections as RawClientConnections,
         ConsensusHeights as RawConsensusHeights,
@@ -209,7 +210,7 @@ where
 #[derive(Debug, Parser)]
 pub(crate) struct Args {
     /// Address of IBC storage account
-    #[arg(long)]
+    #[arg(long, default_value_t = STORAGE_KEY)]
     address: Pubkey,
 
     /// Endpoint to send a request to
