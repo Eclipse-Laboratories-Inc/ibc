@@ -3,13 +3,14 @@ use {
     core::time::Duration,
     eclipse_ibc_proto::eclipse::ibc::chain::v1::ClientState as RawEclipseClientState,
     ibc::core::{
-        context::{ContextError, ValidationContext},
+        context::{ContextError, ExecutionContext, ValidationContext},
         ics02_client::{
             client_state::{ClientState, UpdatedState},
             client_type::ClientType,
             consensus_state::ConsensusState,
             error::ClientError,
             height::Height,
+            msgs::update_client::UpdateKind,
         },
         ics23_commitment::{
             commitment::{CommitmentPrefix, CommitmentProofBytes, CommitmentRoot},
@@ -17,7 +18,7 @@ use {
         },
         ics24_host::{
             identifier::{ChainId, ClientId},
-            path::{ClientUpgradePath, Path},
+            path::{ClientConsensusStatePath, ClientStatePath, ClientUpgradePath, Path},
         },
     },
     ibc_proto::{
@@ -179,13 +180,23 @@ impl ClientState for EclipseClientState {
         Ok(Box::new(EclipseConsensusState::try_from(consensus_state)?))
     }
 
-    fn check_header_and_update_state(
+    fn verify_client_message(
         &self,
         ctx: &dyn ValidationContext,
-        client_id: ClientId,
-        header: protobuf::Any,
-    ) -> Result<UpdatedState, ClientError> {
-        let header = EclipseHeader::try_from(header)?;
+        client_id: &ClientId,
+        client_message: protobuf::Any,
+        update_kind: &UpdateKind,
+    ) -> Result<(), ClientError> {
+        match update_kind {
+            UpdateKind::UpdateClient => (),
+            UpdateKind::SubmitMisbehaviour => {
+                return Err(ClientError::MisbehaviourHandlingFailure {
+                    reason: "Misbehaviour checks are not yet supported".to_owned(),
+                });
+            }
+        }
+
+        let header = EclipseHeader::try_from(client_message)?;
 
         if header.height >= self.latest_height() {
             return Err(ClientError::LowHeaderHeight {
@@ -194,8 +205,42 @@ impl ClientState for EclipseClientState {
             });
         }
 
+        let _client_state = ctx
+            .client_state(client_id)
+            .map_err(client_err_from_context)?
+            .as_any()
+            .downcast_ref::<EclipseClientState>()
+            .ok_or_else(|| ClientError::ClientSpecific {
+                description: "Client state cannot be downcasted into Eclipse client state"
+                    .to_owned(),
+            })?;
+
+        Ok(())
+    }
+
+    // TODO: Support misbehaviour checks
+    fn check_for_misbehaviour(
+        &self,
+        _ctx: &dyn ValidationContext,
+        _client_id: &ClientId,
+        _client_message: protobuf::Any,
+        _update_kind: &UpdateKind,
+    ) -> Result<bool, ClientError> {
+        Ok(false)
+    }
+
+    fn update_state(
+        &self,
+        ctx: &mut dyn ExecutionContext,
+        client_id: &ClientId,
+        client_message: protobuf::Any,
+        _update_kind: &UpdateKind,
+    ) -> Result<Vec<Height>, ClientError> {
+        let header = EclipseHeader::try_from(client_message)?;
+        let new_height = header.height;
+
         let client_state = ctx
-            .client_state(&client_id)
+            .client_state(client_id)
             .map_err(client_err_from_context)?
             .as_any()
             .downcast_ref::<EclipseClientState>()
@@ -211,24 +256,38 @@ impl ClientState for EclipseClientState {
             frozen_height: client_state.frozen_height,
         };
 
-        Ok(UpdatedState {
-            client_state: Box::new(new_client_state),
-            consensus_state: Box::new(EclipseConsensusState::from(header)),
-        })
+        let new_consensus_state = EclipseConsensusState::from(header);
+
+        ctx.store_update_time(
+            client_id.clone(),
+            new_client_state.latest_height(),
+            ctx.host_timestamp()?,
+        )?;
+        ctx.store_update_height(
+            client_id.clone(),
+            new_client_state.latest_height(),
+            ctx.host_height()?,
+        )?;
+
+        ctx.store_consensus_state(
+            ClientConsensusStatePath::new(client_id, &new_client_state.latest_height()),
+            Box::new(new_consensus_state),
+        )?;
+        ctx.store_client_state(ClientStatePath::new(client_id), Box::new(new_client_state))?;
+
+        Ok(vec![new_height])
     }
 
-    // TODO: Support misbehaviour checks
-    fn check_misbehaviour_and_update_state(
+    fn update_state_on_misbehaviour(
         &self,
-        _ctx: &dyn ValidationContext,
-        _client_id: ClientId,
-        misbehaviour: protobuf::Any,
-    ) -> Result<Box<dyn ClientState>, ContextError> {
-        Err(ContextError::ClientError(
-            ClientError::UnknownMisbehaviourType {
-                misbehaviour_type: misbehaviour.type_url,
-            },
-        ))
+        _ctx: &mut dyn ExecutionContext,
+        _client_id: &ClientId,
+        _client_message: protobuf::Any,
+        _update_kind: &UpdateKind,
+    ) -> Result<(), ClientError> {
+        Err(ClientError::MisbehaviourHandlingFailure {
+            reason: "Misbehaviour checks are not yet supported".to_owned(),
+        })
     }
 
     fn verify_upgrade_client(

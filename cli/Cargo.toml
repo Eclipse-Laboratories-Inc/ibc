@@ -15,7 +15,7 @@ eclipse-ibc-light-client = { path = "../light-client" }
 eclipse-ibc-program = { path = "../program" }
 eclipse-ibc-proto = { path = "../proto" }
 eclipse-ibc-state = { path = "../state" }
-ibc = "0.36.0"
+ibc = "0.37.0"
 ibc-proto = "0.26.0"
 prost = "0.11.8"
 serde = "1.0.159"

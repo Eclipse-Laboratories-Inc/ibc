@@ -403,7 +403,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
                 .map_err(|err| ClientError::Other {
                     description: err.to_string(),
                 })?
-                .ok_or_else(|| ClientError::ClientNotFound {
+                .ok_or_else(|| ClientError::ClientStateNotFound {
                     client_id: client_id.clone(),
                 })?,
         )
