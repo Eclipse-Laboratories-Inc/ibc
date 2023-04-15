@@ -26,6 +26,7 @@ use {
 
 const ROUTER_ERR_CODE: u32 = 151;
 const PORT_ERR_CODE: u32 = 152;
+const STORAGE_ERR_CODE: u32 = 153;
 
 pub const STORAGE_KEY: Pubkey = Pubkey::new_from_array([
     135, 90, 195, 29, 90, 182, 162, 153, 214, 170, 125, 126, 161, 2, 167, 102, 196, 107, 28, 247,
@@ -41,6 +42,8 @@ fn with_ibc_handler<F>(
 where
     F: FnOnce(&mut IbcHandler) -> Result<(), InstructionError>,
 {
+    instruction_context.check_number_of_instruction_accounts(4)?;
+
     let mut storage_account =
         instruction_context.try_borrow_instruction_account(transaction_context, 1)?;
     if *storage_account.get_owner() != id() {
@@ -74,7 +77,7 @@ where
             "failed to commit the new IBC state Merkle tree: {:?}",
             err
         );
-        InstructionError::InvalidAccountData
+        InstructionError::Custom(STORAGE_ERR_CODE)
     })?;
 
     ibc_account_data.write_to_account(&mut storage_account, invoke_context)?;
@@ -83,12 +86,12 @@ where
 
 fn init_storage_account(
     invoke_context: &mut InvokeContext,
-    calling_key: Pubkey,
+    payer_key: Pubkey,
     min_rent_balance: u64,
 ) -> Result<(), InstructionError> {
     invoke_context.native_invoke(
         system_instruction::create_account(
-            &calling_key,
+            &payer_key,
             &STORAGE_KEY,
             min_rent_balance,
             MAX_CPI_INSTRUCTION_DATA_LEN,
@@ -121,11 +124,12 @@ pub fn process_instruction(
     let transaction_context = &invoke_context.transaction_context;
     let instruction_context = transaction_context.get_current_instruction_context()?;
 
-    let calling_account =
+    let payer_account =
         instruction_context.try_borrow_instruction_account(transaction_context, 0)?;
-    if !calling_account.is_signer() {
+    if !payer_account.is_signer() {
         return Err(InstructionError::MissingRequiredSignature);
     }
+    let payer_key = *payer_account.get_key();
 
     let instruction_data = instruction_context.get_instruction_data();
     let any_msg = protobuf::Any::decode(instruction_data).map_err(|err| {
@@ -150,61 +154,58 @@ pub fn process_instruction(
     })?;
 
     match ibc_instruction {
-        IbcInstruction::Router(envelope) => with_ibc_handler(
-            invoke_context,
-            transaction_context,
-            instruction_context,
-            |ibc_handler| {
-                dispatch(ibc_handler, envelope).map_err(|err| {
-                    ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
-                    InstructionError::Custom(ROUTER_ERR_CODE)
-                })
-            },
-        )?,
-        IbcInstruction::Port(instruction) => with_ibc_handler(
-            invoke_context,
-            transaction_context,
-            instruction_context,
-            |ibc_handler| match instruction {
-                PortInstruction::Bind(MsgBindPort { port_id }) => {
+        IbcInstruction::Router(envelope) => {
+            with_ibc_handler(
+                invoke_context,
+                transaction_context,
+                instruction_context,
+                |ibc_handler| {
+                    dispatch(ibc_handler, envelope).map_err(|err| {
+                        ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
+                        InstructionError::Custom(ROUTER_ERR_CODE)
+                    })
+                },
+            )?;
+        }
+        IbcInstruction::Port(PortInstruction::Bind(MsgBindPort { port_id })) => {
+            with_ibc_handler(
+                invoke_context,
+                transaction_context,
+                instruction_context,
+                |ibc_handler| {
+                    ibc_handler.bind_port(&port_id, &payer_key).map_err(|err| {
+                        ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
+                        InstructionError::Custom(PORT_ERR_CODE)
+                    })
+                },
+            )?;
+        }
+        IbcInstruction::Port(PortInstruction::Release(MsgReleasePort { port_id })) => {
+            with_ibc_handler(
+                invoke_context,
+                transaction_context,
+                instruction_context,
+                |ibc_handler| {
                     ibc_handler
-                        .bind_port(&port_id, calling_account.get_key())
+                        .release_port(&port_id, &payer_key)
                         .map_err(|err| {
                             ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
                             InstructionError::Custom(PORT_ERR_CODE)
-                        })?;
-                    Ok(())
-                }
-                PortInstruction::Release(MsgReleasePort { port_id }) => {
-                    ibc_handler
-                        .release_port(&port_id, calling_account.get_key())
-                        .map_err(|err| {
-                            ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
-                            InstructionError::Custom(PORT_ERR_CODE)
-                        })?;
-                    Ok(())
-                }
-            },
-        )?,
-        IbcInstruction::Admin(instruction) => {
-            match instruction {
-                AdminInstruction::InitStorageAccount(MsgInitStorageAccount) => {
-                    let calling_key = *calling_account.get_key();
-                    let rent = get_sysvar_with_account_check::rent(
-                        invoke_context,
-                        instruction_context,
-                        2,
-                    )?;
-                    let min_rent_balance =
-                        rent.minimum_balance(MAX_CPI_INSTRUCTION_DATA_LEN as usize);
+                        })
+                },
+            )?;
+        }
+        IbcInstruction::Admin(AdminInstruction::InitStorageAccount(MsgInitStorageAccount)) => {
+            instruction_context.check_number_of_instruction_accounts(3)?;
 
-                    // Accounts need to be dropped because `invoke_context.native_invoke`
-                    // requires `&mut invoke_context`.
-                    drop(calling_account);
+            let rent = get_sysvar_with_account_check::rent(invoke_context, instruction_context, 2)?;
+            let min_rent_balance = rent.minimum_balance(MAX_CPI_INSTRUCTION_DATA_LEN as usize);
 
-                    init_storage_account(invoke_context, calling_key, min_rent_balance)?;
-                }
-            }
+            // Accounts need to be dropped because `invoke_context.native_invoke`
+            // requires `&mut invoke_context`.
+            drop(payer_account);
+
+            init_storage_account(invoke_context, payer_key, min_rent_balance)?;
         }
     }
 
