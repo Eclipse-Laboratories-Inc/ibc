@@ -1,11 +1,12 @@
 use {
-    crate::query,
+    crate::{query, tx},
     clap::{Parser, Subcommand},
 };
 
 #[derive(Debug, Subcommand)]
 enum CliSubcommand {
     Query(query::Args),
+    Tx(tx::Args),
 }
 
 #[derive(Debug, Parser)]
@@ -20,5 +21,6 @@ pub async fn run() -> anyhow::Result<()> {
 
     match subcommand {
         CliSubcommand::Query(query_args) => query::run(query_args).await,
+        CliSubcommand::Tx(query_args) => tx::run(query_args).await,
     }
 }

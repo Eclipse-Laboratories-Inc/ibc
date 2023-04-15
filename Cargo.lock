@@ -1326,6 +1326,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "bs58",
  "clap 4.2.1",
  "eclipse-ibc-light-client",
  "eclipse-ibc-program",

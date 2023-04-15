@@ -1,7 +1,6 @@
 use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
-    eclipse_ibc_program::STORAGE_KEY,
     eclipse_ibc_proto::eclipse::ibc::client::v1::{
         AllModuleIds as RawAllModuleIds, ClientConnections as RawClientConnections,
         ConsensusHeights as RawConsensusHeights,
@@ -33,7 +32,6 @@ use {
     },
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
-    solana_sdk::pubkey::Pubkey,
 };
 
 #[derive(Clone, Debug, Subcommand)]
@@ -209,10 +207,6 @@ where
 
 #[derive(Debug, Parser)]
 pub(crate) struct Args {
-    /// Address of IBC storage account
-    #[arg(long, default_value_t = STORAGE_KEY)]
-    address: Pubkey,
-
     /// Endpoint to send a request to
     #[arg(long, default_value = "http://127.0.0.1:8899")]
     endpoint: String,
@@ -222,19 +216,15 @@ pub(crate) struct Args {
     kind: StateKind,
 }
 
-pub(crate) async fn run(
-    Args {
-        address,
-        endpoint,
-        kind,
-    }: Args,
-) -> anyhow::Result<()> {
+pub(crate) async fn run(Args { endpoint, kind }: Args) -> anyhow::Result<()> {
     let path = kind.clone().into_path();
     println!("{path}:");
 
     let rpc_client = RpcClient::new(endpoint);
 
-    let raw_account_data = rpc_client.get_account_data(&address).await?;
+    let raw_account_data = rpc_client
+        .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
+        .await?;
     let slot = rpc_client.get_slot().await?;
 
     let IbcAccountData {
