@@ -1349,7 +1349,7 @@ dependencies = [
  "eclipse-ibc-proto",
  "ibc",
  "ibc-proto",
- "ics23",
+ "ics23 0.10.0",
  "jmt",
  "known-proto",
  "prost",
@@ -1403,7 +1403,7 @@ dependencies = [
  "eclipse-ibc-proto",
  "ibc",
  "ibc-proto",
- "ics23",
+ "ics23 0.10.0",
  "jmt",
  "known-proto",
  "prost",
@@ -2046,7 +2046,7 @@ dependencies = [
  "dyn-clone",
  "erased-serde",
  "ibc-proto",
- "ics23",
+ "ics23 0.9.0",
  "num-traits",
  "primitive-types",
  "prost",
@@ -2088,6 +2088,21 @@ name = "ics23"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca44b684ce1859cff746ff46f5765ab72e12e3c06f76a8356db8f9a2ecf43f17"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "hex",
+ "prost",
+ "ripemd",
+ "sha2 0.10.6",
+ "sha3 0.10.7",
+]
+
+[[package]]
+name = "ics23"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "352b6bbf6a07602cf8def05362987835a255d3312eae59c1af358af3ac57e0cc"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2259,7 +2274,7 @@ dependencies = [
  "bcs",
  "byteorder",
  "hex",
- "ics23",
+ "ics23 0.9.0",
  "itertools",
  "mirai-annotations",
  "num-derive",
