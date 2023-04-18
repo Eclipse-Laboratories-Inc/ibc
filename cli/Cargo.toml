@@ -18,7 +18,7 @@ eclipse-ibc-program = { path = "../program" }
 eclipse-ibc-proto = { path = "../proto" }
 eclipse-ibc-state = { path = "../state" }
 ibc = "0.37.0"
-ibc-proto = "0.26.0"
+ibc-proto = "0.29.0"
 known-proto = { path = "../known-proto" }
 prost = "0.11.9"
 serde = "1.0.160"

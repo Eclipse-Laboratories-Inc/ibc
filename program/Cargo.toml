@@ -15,7 +15,7 @@ eclipse-ibc-proto = { path = "../proto" }
 eclipse-ibc-state = { path = "../state" }
 hex = "0.4.3"
 ibc = "0.37.0"
-ibc-proto = "0.26.0"
+ibc-proto = "0.29.0"
 known-proto = { path = "../known-proto" }
 serde = "1.0.160"
 solana-program-runtime = "=1.15.2"

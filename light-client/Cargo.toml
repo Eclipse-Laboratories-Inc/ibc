@@ -10,7 +10,7 @@ edition = "2021"
 [dependencies]
 eclipse-ibc-proto = { path = "../proto" }
 ibc = "0.37.0"
-ibc-proto = "0.26.0"
+ibc-proto = "0.29.0"
 ics23 = "0.9.0"
 jmt = "=0.4.0"
 known-proto = { path = "../known-proto" }

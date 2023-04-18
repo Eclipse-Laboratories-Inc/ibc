@@ -351,28 +351,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-stream"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd56dd203fef61ac097dd65721a419ddccb106b2d2b70ba60a6b529f03961a51"
-dependencies = [
- "async-stream-impl",
- "futures-core",
- "pin-project-lite",
-]
-
-[[package]]
-name = "async-stream-impl"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16e62a023e7c117e27523144c5d2459f4397fcc3cab0085af8e2224f643a0193"
-dependencies = [
- "proc-macro2 1.0.56",
- "quote 1.0.26",
- "syn 2.0.15",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1355,7 +1333,7 @@ dependencies = [
  "eclipse-ibc-proto",
  "eclipse-ibc-state",
  "ibc",
- "ibc-proto",
+ "ibc-proto 0.29.0",
  "known-proto",
  "prost",
  "serde",
@@ -1371,7 +1349,7 @@ version = "0.1.0"
 dependencies = [
  "eclipse-ibc-proto",
  "ibc",
- "ibc-proto",
+ "ibc-proto 0.29.0",
  "ics23",
  "jmt",
  "known-proto",
@@ -1393,7 +1371,7 @@ dependencies = [
  "eclipse-ibc-state",
  "hex",
  "ibc",
- "ibc-proto",
+ "ibc-proto 0.29.0",
  "known-proto",
  "serde",
  "solana-program-runtime",
@@ -1406,13 +1384,13 @@ dependencies = [
 name = "eclipse-ibc-proto"
 version = "0.1.0"
 dependencies = [
- "ibc-proto",
+ "ibc-proto 0.29.0",
  "prost",
  "prost-build",
  "prost-types",
  "serde",
- "tendermint-proto",
- "tonic 0.9.2",
+ "tendermint-proto 0.29.1",
+ "tonic",
  "tonic-build",
 ]
 
@@ -1425,7 +1403,7 @@ dependencies = [
  "derive_more",
  "eclipse-ibc-proto",
  "ibc",
- "ibc-proto",
+ "ibc-proto 0.29.0",
  "ics23",
  "jmt",
  "known-proto",
@@ -2068,7 +2046,7 @@ dependencies = [
  "displaydoc",
  "dyn-clone",
  "erased-serde",
- "ibc-proto",
+ "ibc-proto 0.26.0",
  "ics23",
  "num-traits",
  "primitive-types",
@@ -2081,7 +2059,7 @@ dependencies = [
  "subtle-encoding",
  "tendermint",
  "tendermint-light-client-verifier",
- "tendermint-proto",
+ "tendermint-proto 0.29.1",
  "time 0.3.20",
  "tracing",
  "uint",
@@ -2102,8 +2080,23 @@ dependencies = [
  "scale-info",
  "serde",
  "subtle-encoding",
- "tendermint-proto",
- "tonic 0.8.3",
+ "tendermint-proto 0.29.1",
+]
+
+[[package]]
+name = "ibc-proto"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "364c9dad4c898411ddfdcc990800c229cd7018c16ab1360395e4637458032198"
+dependencies = [
+ "base64 0.21.0",
+ "bytes",
+ "flex-error",
+ "prost",
+ "serde",
+ "subtle-encoding",
+ "tendermint-proto 0.30.0",
+ "tonic",
 ]
 
 [[package]]
@@ -2346,10 +2339,10 @@ dependencies = [
  "anyhow",
  "bytes",
  "ibc",
- "ibc-proto",
+ "ibc-proto 0.29.0",
  "prost",
  "tendermint",
- "tendermint-proto",
+ "tendermint-proto 0.29.1",
 ]
 
 [[package]]
@@ -4880,7 +4873,7 @@ dependencies = [
  "signature",
  "subtle",
  "subtle-encoding",
- "tendermint-proto",
+ "tendermint-proto 0.29.1",
  "time 0.3.20",
  "zeroize",
 ]
@@ -4903,6 +4896,24 @@ name = "tendermint-proto"
 version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c943f78c929cdf14553842f705f2c30324bc35b9179caaa5c9b80620f60652e6"
+dependencies = [
+ "bytes",
+ "flex-error",
+ "num-derive",
+ "num-traits",
+ "prost",
+ "prost-types",
+ "serde",
+ "serde_bytes",
+ "subtle-encoding",
+ "time 0.3.20",
+]
+
+[[package]]
+name = "tendermint-proto"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e553ed65874c3f35a71eb60d255edfea956274b5af37a0297d54bba039fe45e3"
 dependencies = [
  "bytes",
  "flex-error",
@@ -5153,38 +5164,6 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f219fad3b929bef19b1f86fbc0358d35daed8f2cac972037ac0dc10bbb8d5fb"
-dependencies = [
- "async-stream",
- "async-trait",
- "axum",
- "base64 0.13.1",
- "bytes",
- "futures-core",
- "futures-util",
- "h2",
- "http",
- "http-body",
- "hyper",
- "hyper-timeout",
- "percent-encoding",
- "pin-project",
- "prost",
- "prost-derive",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tower",
- "tower-layer",
- "tower-service",
- "tracing",
- "tracing-futures",
-]
-
-[[package]]
-name = "tonic"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3082666a3a6433f7f511c7192923fa1fe07c69332d3c6a2e6bb040b569199d5a"
@@ -5287,16 +5266,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "tracing-futures"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
-dependencies = [
- "pin-project",
- "tracing",
 ]
 
 [[package]]
