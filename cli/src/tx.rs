@@ -13,6 +13,7 @@ use {
         message::Message,
         pubkey::Pubkey,
         signer::{keypair::read_keypair_file, Signer},
+        system_program,
         sysvar::{clock, rent, slot_hashes},
         transaction::Transaction,
     },
@@ -57,6 +58,7 @@ impl TxKind {
                 AccountMeta::new_readonly(payer_key, true),
                 AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
                 AccountMeta::new_readonly(rent::id(), false),
+                AccountMeta::new_readonly(system_program::id(), false),
             ],
         }
     }

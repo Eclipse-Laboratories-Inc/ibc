@@ -89,6 +89,7 @@ fn init_storage_account(
     payer_key: Pubkey,
     min_rent_balance: u64,
 ) -> Result<(), InstructionError> {
+    // System account is at index 3
     invoke_context.native_invoke(
         system_instruction::create_account(
             &payer_key,
@@ -196,7 +197,7 @@ pub fn process_instruction(
             )?;
         }
         IbcInstruction::Admin(AdminInstruction::InitStorageAccount(MsgInitStorageAccount)) => {
-            instruction_context.check_number_of_instruction_accounts(3)?;
+            instruction_context.check_number_of_instruction_accounts(4)?;
 
             let rent = get_sysvar_with_account_check::rent(invoke_context, instruction_context, 2)?;
             let min_rent_balance = rent.minimum_balance(MAX_CPI_INSTRUCTION_DATA_LEN as usize);
