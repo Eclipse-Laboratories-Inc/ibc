@@ -19,19 +19,19 @@ use {
         },
         protobuf::Protobuf,
     },
-    known_proto::{KnownProto, KnownProtoWithFrom},
+    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     thiserror::Error,
 };
 
-pub(super) mod msgs {
+pub mod msgs {
     use {
         core::{convert::Infallible, str::FromStr},
         eclipse_ibc_proto::eclipse::ibc::{
             admin::v1::MsgInitStorageAccount as RawMsgInitStorageAccount,
             port::v1::{MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort},
         },
-        ibc::{core::ics24_host::identifier::PortId, tx_msg::Msg},
-        known_proto::KnownProtoWithFrom,
+        ibc::core::ics24_host::identifier::PortId,
+        known_proto::{KnownAnyProto, KnownProtoWithFrom},
     };
 
     #[derive(Clone, Debug)]
@@ -40,19 +40,17 @@ pub(super) mod msgs {
     }
 
     impl MsgBindPort {
-        pub(super) const TYPE_URL: &str = "/eclipse.ibc.port.v1.MsgBindPort";
-    }
-
-    impl Msg for MsgBindPort {
-        type Raw = RawMsgBindPort;
-
-        fn type_url(&self) -> String {
-            Self::TYPE_URL.to_owned()
-        }
+        pub const TYPE_URL: &str = "/eclipse.ibc.port.v1.MsgBindPort";
     }
 
     impl KnownProtoWithFrom for MsgBindPort {
         type RawWithFrom = RawMsgBindPort;
+    }
+
+    impl KnownAnyProto for MsgBindPort {
+        fn type_url() -> String {
+            Self::TYPE_URL.to_owned()
+        }
     }
 
     impl TryFrom<RawMsgBindPort> for MsgBindPort {
@@ -77,19 +75,17 @@ pub(super) mod msgs {
     }
 
     impl MsgReleasePort {
-        pub(super) const TYPE_URL: &str = "/eclipse.ibc.port.v1.MsgReleasePort";
-    }
-
-    impl Msg for MsgReleasePort {
-        type Raw = RawMsgReleasePort;
-
-        fn type_url(&self) -> String {
-            Self::TYPE_URL.to_owned()
-        }
+        pub const TYPE_URL: &str = "/eclipse.ibc.port.v1.MsgReleasePort";
     }
 
     impl KnownProtoWithFrom for MsgReleasePort {
         type RawWithFrom = RawMsgReleasePort;
+    }
+
+    impl KnownAnyProto for MsgReleasePort {
+        fn type_url() -> String {
+            Self::TYPE_URL.to_owned()
+        }
     }
 
     impl TryFrom<RawMsgReleasePort> for MsgReleasePort {
@@ -112,19 +108,17 @@ pub(super) mod msgs {
     pub struct MsgInitStorageAccount;
 
     impl MsgInitStorageAccount {
-        pub(super) const TYPE_URL: &str = "/eclipse.ibc.admin.v1.MsgInitStorageAccount";
-    }
-
-    impl Msg for MsgInitStorageAccount {
-        type Raw = RawMsgInitStorageAccount;
-
-        fn type_url(&self) -> String {
-            Self::TYPE_URL.to_owned()
-        }
+        pub const TYPE_URL: &str = "/eclipse.ibc.admin.v1.MsgInitStorageAccount";
     }
 
     impl KnownProtoWithFrom for MsgInitStorageAccount {
         type RawWithFrom = RawMsgInitStorageAccount;
+    }
+
+    impl KnownAnyProto for MsgInitStorageAccount {
+        fn type_url() -> String {
+            Self::TYPE_URL.to_owned()
+        }
     }
 
     impl TryFrom<RawMsgInitStorageAccount> for MsgInitStorageAccount {
@@ -187,8 +181,8 @@ impl TryFrom<protobuf::Any> for PortInstruction {
 impl From<PortInstruction> for protobuf::Any {
     fn from(port_instruction: PortInstruction) -> Self {
         match port_instruction {
-            PortInstruction::Bind(msg_bind_port) => msg_bind_port.to_any(),
-            PortInstruction::Release(msg_release_port) => msg_release_port.to_any(),
+            PortInstruction::Bind(msg_bind_port) => msg_bind_port.encode_as_any(),
+            PortInstruction::Release(msg_release_port) => msg_release_port.encode_as_any(),
         }
     }
 }
@@ -223,7 +217,7 @@ impl From<AdminInstruction> for protobuf::Any {
     fn from(admin_instruction: AdminInstruction) -> Self {
         match admin_instruction {
             AdminInstruction::InitStorageAccount(msg_init_storage_account) => {
-                msg_init_storage_account.to_any()
+                msg_init_storage_account.encode_as_any()
             }
         }
     }

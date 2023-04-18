@@ -74,6 +74,20 @@ where
     }
 }
 
+pub trait KnownAnyProto
+where
+    Self: KnownProto,
+{
+    fn type_url() -> String;
+
+    fn encode_as_any(self) -> protobuf::Any {
+        protobuf::Any {
+            type_url: Self::type_url(),
+            value: self.encode(),
+        }
+    }
+}
+
 impl KnownProto for ClientType {
     type Raw = String;
 
