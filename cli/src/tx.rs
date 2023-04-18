@@ -1,17 +1,65 @@
 use {
-    clap::{builder::ValueParser, Parser},
+    anyhow::anyhow,
+    clap::{Parser, Subcommand},
+    eclipse_ibc_program::ibc_instruction::msgs::{
+        MsgBindPort, MsgInitStorageAccount, MsgReleasePort,
+    },
+    ibc::core::ics24_host::identifier::PortId,
+    ibc_proto::google::protobuf,
+    known_proto::{KnownAnyProto, KnownProto},
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
         message::Message,
-        signer::{keypair::Keypair, Signer},
-        sysvar::{clock, slot_hashes},
+        pubkey::Pubkey,
+        signer::{keypair::read_keypair_file, Signer},
+        sysvar::{clock, rent, slot_hashes},
         transaction::Transaction,
     },
+    std::path::PathBuf,
 };
 
-fn parse_bs58_str(s: &str) -> bs58::decode::Result<Vec<u8>> {
-    bs58::decode(s).into_vec()
+#[derive(Clone, Debug, Subcommand)]
+enum TxKind {
+    BindPort { port_id: PortId },
+    InitStorageAccount,
+    ReleasePort { port_id: PortId },
+}
+
+impl TxKind {
+    fn encode_as_any(&self) -> protobuf::Any {
+        match self {
+            Self::BindPort { port_id } => MsgBindPort {
+                port_id: port_id.clone(),
+            }
+            .encode_as_any(),
+            Self::InitStorageAccount => MsgInitStorageAccount.encode_as_any(),
+            Self::ReleasePort { port_id } => MsgReleasePort {
+                port_id: port_id.clone(),
+            }
+            .encode_as_any(),
+        }
+    }
+
+    fn instruction_data(&self) -> Vec<u8> {
+        self.encode_as_any().encode()
+    }
+
+    fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {
+        match self {
+            Self::BindPort { .. } | Self::ReleasePort { .. } => vec![
+                AccountMeta::new_readonly(payer_key, true),
+                AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
+                AccountMeta::new_readonly(clock::id(), false),
+                AccountMeta::new_readonly(slot_hashes::id(), false),
+            ],
+            Self::InitStorageAccount => vec![
+                AccountMeta::new_readonly(payer_key, true),
+                AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
+                AccountMeta::new_readonly(rent::id(), false),
+            ],
+        }
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -20,33 +68,39 @@ pub(crate) struct Args {
     #[arg(long, default_value = "http://127.0.0.1:8899")]
     endpoint: String,
 
-    /// Keypair for payer, as a base58-encoded string
-    #[arg(long, env, value_parser = ValueParser::new(parse_bs58_str))]
-    payer: Vec<u8>,
+    /// File path to payer keypair
+    #[arg(long)]
+    payer: Option<PathBuf>,
 
-    /// Instruction to submit
-    instruction_data: Vec<u8>,
+    /// Transaction kind
+    #[command(subcommand)]
+    kind: TxKind,
 }
 
 pub(crate) async fn run(
     Args {
         endpoint,
         payer,
-        instruction_data,
+        kind,
     }: Args,
 ) -> anyhow::Result<()> {
-    let payer = Keypair::from_bytes(&payer)?;
+    let payer = match payer {
+        Some(payer) => payer,
+        None => {
+            let mut keypair_path = dirs_next::home_dir()
+                .ok_or_else(|| anyhow!("Could not retrieve home directory"))?;
+            keypair_path.extend([".config", "solana", "id.json"]);
+            keypair_path
+        }
+    };
+    let payer = read_keypair_file(&payer)
+        .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?;
     let rpc_client = RpcClient::new(endpoint);
 
     let instruction = Instruction::new_with_bytes(
         eclipse_ibc_program::id(),
-        &instruction_data,
-        vec![
-            AccountMeta::new_readonly(payer.pubkey(), true),
-            AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
-            AccountMeta::new_readonly(clock::id(), false),
-            AccountMeta::new_readonly(slot_hashes::id(), false),
-        ],
+        &kind.instruction_data(),
+        kind.accounts(payer.pubkey()),
     );
 
     let message = Message::new(&[instruction], Some(&payer.pubkey()));
