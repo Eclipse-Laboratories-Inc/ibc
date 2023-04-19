@@ -7,14 +7,22 @@ use {
     },
     ibc::{
         core::{
-            ics02_client::{height::Height, msgs::create_client::MsgCreateClient},
+            ics02_client::{
+                height::Height,
+                msgs::{
+                    create_client::MsgCreateClient,
+                    update_client::{self, MsgUpdateClient},
+                },
+            },
             ics23_commitment::commitment::CommitmentRoot,
-            ics24_host::identifier::ChainId,
-            ics24_host::identifier::PortId,
+            ics24_host::identifier::{ChainId, ClientId, PortId},
         },
         tx_msg::Msg as _,
     },
-    ibc_proto::google::protobuf,
+    ibc_proto::{
+        google::protobuf, ibc::core::client::v1::MsgUpdateClient as RawMsgUpdateClient,
+        protobuf::Protobuf,
+    },
     known_proto::{KnownAnyProto, KnownProto},
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::{
@@ -49,6 +57,13 @@ enum TxKind {
     InitStorageAccount,
     ReleasePort {
         port_id: PortId,
+    },
+    UpdateClientEclipse {
+        client_id: ClientId,
+        #[arg(value_parser = ValueParser::new(parse_commitment_root))]
+        commitment_root: CommitmentRoot,
+        height: Height,
+        timestamp: TendermintTime,
     },
 }
 
@@ -89,6 +104,31 @@ impl TxKind {
                 )
                 .to_any()
             }
+            Self::UpdateClientEclipse {
+                client_id,
+                commitment_root,
+                height,
+                timestamp,
+            } => {
+                let latest_header = EclipseHeader {
+                    height: *height,
+                    commitment_root: commitment_root.clone(),
+                    timestamp: *timestamp,
+                };
+                let msg = MsgUpdateClient {
+                    client_id: client_id.clone(),
+                    client_message: latest_header.encode_as_any(),
+                    update_kind: update_client::UpdateKind::UpdateClient,
+                    signer: payer_key
+                        .to_string()
+                        .parse()
+                        .expect("Pubkey should never be empty"),
+                };
+                protobuf::Any {
+                    type_url: update_client::UPDATE_CLIENT_TYPE_URL.to_owned(),
+                    value: <_ as Protobuf<RawMsgUpdateClient>>::encode_vec(&msg).unwrap(),
+                }
+            }
             Self::InitStorageAccount => MsgInitStorageAccount.encode_as_any(),
             Self::ReleasePort { port_id } => MsgReleasePort {
                 port_id: port_id.clone(),
@@ -103,7 +143,10 @@ impl TxKind {
 
     fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {
         match self {
-            Self::BindPort { .. } | Self::CreateClientEclipse { .. } | Self::ReleasePort { .. } => {
+            Self::BindPort { .. }
+            | Self::CreateClientEclipse { .. }
+            | Self::ReleasePort { .. }
+            | Self::UpdateClientEclipse { .. } => {
                 vec![
                     AccountMeta::new_readonly(payer_key, true),
                     AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),

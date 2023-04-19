@@ -9,7 +9,7 @@ use {
         timestamp::Timestamp,
     },
     ibc_proto::{google::protobuf, protobuf::Protobuf},
-    known_proto::{KnownProto, KnownProtoWithFrom},
+    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     serde::Serialize,
     tendermint::time::Time as TendermintTime,
 };
@@ -71,6 +71,12 @@ impl Protobuf<RawEclipseHeader> for EclipseHeader {}
 
 impl KnownProtoWithFrom for EclipseHeader {
     type RawWithFrom = RawEclipseHeader;
+}
+
+impl KnownAnyProto for EclipseHeader {
+    fn type_url() -> String {
+        ECLIPSE_HEADER_TYPE_URL.to_owned()
+    }
 }
 
 impl From<EclipseHeader> for protobuf::Any {
