@@ -329,6 +329,7 @@ impl ChainStateKind {
                         }
                     })
                     .filter_map(Result::ok)
+                    .map(|(key_hash, value)| (hex::encode(key_hash.0), hex::encode(value)))
                     .collect::<HashMap<_, _>>();
 
                 let json_str =
