@@ -17,5 +17,5 @@ known-proto = { path = "../known-proto" }
 prost = "0.11.9"
 serde = "1.0.160"
 solana-sdk = "=1.15.2"
-tendermint = "0.29.1"
+tendermint = "0.30.0"
 thiserror = "1.0.40"
