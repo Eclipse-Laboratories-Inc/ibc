@@ -6,7 +6,7 @@ use {
     },
     ibc_proto::ibc::core::commitment::v1::MerkleRoot,
     ics23::ExistenceProof,
-    jmt::Sha256Jmt,
+    jmt::{storage::TreeWriter, Sha256Jmt},
     known_proto::KnownProto,
     sha2::Sha256,
     solana_sdk::clock::Slot,
@@ -15,6 +15,7 @@ use {
 
 pub struct IbcState<'a> {
     state_jmt: Sha256Jmt<'a, IbcStore>,
+    state_store: &'a IbcStore,
     pending_changes: BTreeMap<jmt::KeyHash, Option<Vec<u8>>>,
     version: jmt::Version,
 }
@@ -34,6 +35,7 @@ impl<'a> IbcState<'a> {
     pub fn new(state_store: &'a IbcStore, slot: Slot) -> Self {
         Self {
             state_jmt: Sha256Jmt::new(state_store),
+            state_store,
             pending_changes: BTreeMap::new(),
             // Slots map directly to versions
             version: slot,
@@ -118,8 +120,10 @@ impl<'a> IbcState<'a> {
 
     pub fn commit(&mut self) -> anyhow::Result<()> {
         let pending_changes = mem::take(&mut self.pending_changes);
-        self.state_jmt
+        let (_root_hash, jmt::storage::TreeUpdateBatch { node_batch, .. }) = self
+            .state_jmt
             .put_value_set(pending_changes, self.version)?;
+        self.state_store.write_node_batch(&node_batch)?;
         Ok(())
     }
 }
