@@ -1354,6 +1354,7 @@ dependencies = [
  "eclipse-ibc-program",
  "eclipse-ibc-proto",
  "eclipse-ibc-state",
+ "hex",
  "ibc",
  "ibc-proto",
  "known-proto",
@@ -1362,6 +1363,7 @@ dependencies = [
  "serde_json",
  "solana-client",
  "solana-sdk",
+ "tendermint",
  "tokio",
 ]
 

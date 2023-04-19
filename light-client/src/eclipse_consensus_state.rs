@@ -9,7 +9,7 @@ use {
         timestamp::Timestamp,
     },
     ibc_proto::{google::protobuf, protobuf::Protobuf},
-    known_proto::{KnownProto, KnownProtoWithFrom},
+    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     serde::Serialize,
     tendermint::time::Time as TendermintTime,
 };
@@ -72,6 +72,12 @@ impl Protobuf<RawEclipseConsensusState> for EclipseConsensusState {}
 
 impl KnownProtoWithFrom for EclipseConsensusState {
     type RawWithFrom = RawEclipseConsensusState;
+}
+
+impl KnownAnyProto for EclipseConsensusState {
+    fn type_url() -> String {
+        ECLIPSE_CONSENSUS_STATE_TYPE_URL.to_owned()
+    }
 }
 
 impl From<EclipseConsensusState> for protobuf::Any {

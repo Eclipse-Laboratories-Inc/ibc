@@ -26,7 +26,7 @@ use {
         ibc::core::commitment::v1::{MerklePath, MerkleProof as RawMerkleProof, MerkleRoot},
         protobuf::Protobuf,
     },
-    known_proto::{KnownProto, KnownProtoWithFrom},
+    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     serde::Serialize,
 };
 
@@ -98,6 +98,12 @@ impl Protobuf<RawEclipseClientState> for EclipseClientState {}
 
 impl KnownProtoWithFrom for EclipseClientState {
     type RawWithFrom = RawEclipseClientState;
+}
+
+impl KnownAnyProto for EclipseClientState {
+    fn type_url() -> String {
+        ECLIPSE_CLIENT_STATE_TYPE_URL.to_owned()
+    }
 }
 
 impl From<EclipseClientState> for protobuf::Any {
