@@ -274,8 +274,9 @@ impl ChainStateKind {
                     commitment_root,
                     timestamp,
                 };
-                // TODO: Print this in a better form
-                println!("{consensus_state:?}");
+                let json_str =
+                    colored_json::to_colored_json_auto(&serde_json::to_value(&consensus_state)?)?;
+                println!("{json_str}");
 
                 Ok(())
             }
