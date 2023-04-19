@@ -245,6 +245,7 @@ where
 enum ChainStateKind {
     HostHeight,
     HostConsensusState { height: Height },
+    IbcMetadata,
     IbcState,
 }
 
@@ -276,6 +277,23 @@ impl ChainStateKind {
                 };
                 let json_str =
                     colored_json::to_colored_json_auto(&serde_json::to_value(&consensus_state)?)?;
+                println!("{json_str}");
+
+                Ok(())
+            }
+            Self::IbcMetadata => {
+                let raw_account_data = rpc_client
+                    .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
+                    .await?;
+
+                let IbcAccountData {
+                    metadata: ibc_metadata,
+                    ..
+                } = bincode::deserialize(&raw_account_data)?;
+
+                let json_str =
+                    colored_json::to_colored_json_auto(&serde_json::to_value(&ibc_metadata)?)?;
+
                 println!("{json_str}");
 
                 Ok(())
