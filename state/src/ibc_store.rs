@@ -10,7 +10,7 @@ use {
 };
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-struct InnerStore {
+pub struct InnerStore {
     #[serde(with = "store_nodes")]
     nodes: BTreeMap<jmt::storage::NodeKey, jmt::storage::Node>,
     value_history: HashMap<jmt::KeyHash, BTreeMap<jmt::Version, Option<jmt::OwnedValue>>>,
@@ -93,7 +93,7 @@ pub struct IbcStore {
 }
 
 impl IbcStore {
-    fn read(&self) -> anyhow::Result<RwLockReadGuard<'_, InnerStore>> {
+    pub fn read(&self) -> anyhow::Result<RwLockReadGuard<'_, InnerStore>> {
         self.inner.read().map_err(|err| anyhow!("{err}"))
     }
 

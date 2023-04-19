@@ -902,6 +902,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "colored_json"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5373cd259cdfce1f5fc3d1d577c1fad8c597828f25b9ae70032b095f03825ae9"
+dependencies = [
+ "is-terminal",
+ "serde",
+ "serde_json",
+ "yansi",
+]
+
+[[package]]
 name = "combine"
 version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1349,6 +1361,7 @@ dependencies = [
  "bincode",
  "bs58",
  "clap 4.2.2",
+ "colored_json",
  "dirs-next",
  "eclipse-ibc-light-client",
  "eclipse-ibc-program",
@@ -5848,6 +5861,12 @@ dependencies = [
  "thiserror",
  "time 0.3.20",
 ]
+
+[[package]]
+name = "yansi"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "yasna"

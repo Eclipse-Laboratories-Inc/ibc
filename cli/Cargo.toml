@@ -12,6 +12,7 @@ anyhow = "1.0.70"
 bincode = "1.3.3"
 bs58 = "0.4.0"
 clap = { version = "4.2.2", features = ["derive", "env"] }
+colored_json = "3.1.0"
 dirs-next = "2.0.0"
 eclipse-ibc-light-client = { path = "../light-client" }
 eclipse-ibc-program = { path = "../program" }

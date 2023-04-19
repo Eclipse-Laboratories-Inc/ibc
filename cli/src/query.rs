@@ -209,7 +209,7 @@ impl MerkleStateKind {
 
     async fn run(self, rpc_client: &RpcClient) -> anyhow::Result<()> {
         let path = self.clone().into_path();
-        println!("{path}:");
+        eprintln!("{path}:");
 
         let raw_account_data = rpc_client
             .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
@@ -236,13 +236,16 @@ where
     let raw = ibc_state
         .get_raw::<T>(key)?
         .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
-    Ok(serde_json::to_string_pretty(&raw)?)
+    Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
+        &raw,
+    )?)?)
 }
 
 #[derive(Clone, Debug, Subcommand)]
 enum ChainStateKind {
     HostHeight,
     HostConsensusState { height: Height },
+    IbcState,
 }
 
 impl ChainStateKind {
@@ -273,6 +276,23 @@ impl ChainStateKind {
                 };
                 // TODO: Print this in a better form
                 println!("{consensus_state:?}");
+
+                Ok(())
+            }
+            Self::IbcState => {
+                let raw_account_data = rpc_client
+                    .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
+                    .await?;
+
+                let IbcAccountData {
+                    store: ibc_store, ..
+                } = bincode::deserialize(&raw_account_data)?;
+
+                let ibc_state_map = ibc_store.read()?;
+                let json_str =
+                    colored_json::to_colored_json_auto(&serde_json::to_value(&*ibc_state_map)?)?;
+
+                println!("{json_str}");
 
                 Ok(())
             }
