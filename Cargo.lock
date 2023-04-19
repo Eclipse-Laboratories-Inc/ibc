@@ -1370,6 +1370,7 @@ dependencies = [
  "hex",
  "ibc",
  "ibc-proto",
+ "jmt",
  "known-proto",
  "prost",
  "serde",

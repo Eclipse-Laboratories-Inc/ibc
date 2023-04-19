@@ -9,11 +9,12 @@ use {
     },
 };
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct InnerStore {
     #[serde(with = "store_nodes")]
     nodes: BTreeMap<jmt::storage::NodeKey, jmt::storage::Node>,
     value_history: HashMap<jmt::KeyHash, BTreeMap<jmt::Version, Option<jmt::OwnedValue>>>,
+    latest_version: Option<jmt::Version>,
 }
 
 mod store_nodes {
@@ -83,6 +84,12 @@ mod store_nodes {
         D: Deserializer<'de>,
     {
         deserializer.deserialize_map(ValueVisitor)
+    }
+}
+
+impl InnerStore {
+    pub fn latest_version(&self) -> Option<jmt::Version> {
+        self.latest_version
     }
 }
 
@@ -161,6 +168,13 @@ impl TreeWriter for IbcStore {
                 }
             }
             versions.insert(*version, value.clone());
+
+            if inner
+                .latest_version
+                .map_or(true, |latest_version| *version < latest_version)
+            {
+                inner.latest_version = Some(*version);
+            }
         }
 
         Ok(())

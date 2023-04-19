@@ -35,6 +35,7 @@ use {
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::hash::Hash,
+    std::{collections::HashMap, sync::Arc},
     tendermint::time::Time as TendermintTime,
 };
 
@@ -214,13 +215,17 @@ impl MerkleStateKind {
         let raw_account_data = rpc_client
             .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
             .await?;
-        let slot = rpc_client.get_slot().await?;
 
         let IbcAccountData {
             store: ibc_store, ..
         } = bincode::deserialize(&raw_account_data)?;
 
-        let ibc_state = IbcState::new(&ibc_store, slot);
+        let latest_version = ibc_store
+            .read()?
+            .latest_version()
+            .ok_or_else(|| anyhow!("IBC store is missing latest version"))?;
+
+        let ibc_state = IbcState::new(&ibc_store, latest_version);
 
         let json_str = self.get_json_str(&ibc_state)?;
         println!("{json_str}");
@@ -292,8 +297,7 @@ impl ChainStateKind {
                 } = bincode::deserialize(&raw_account_data)?;
 
                 let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(&ibc_metadata)?)?;
-
+                    colored_json::to_colored_json_auto(&serde_json::to_value(ibc_metadata)?)?;
                 println!("{json_str}");
 
                 Ok(())
@@ -307,10 +311,28 @@ impl ChainStateKind {
                     store: ibc_store, ..
                 } = bincode::deserialize(&raw_account_data)?;
 
-                let ibc_state_map = ibc_store.read()?;
-                let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(&*ibc_state_map)?)?;
+                let latest_version = ibc_store
+                    .read()?
+                    .latest_version()
+                    .ok_or_else(|| anyhow!("IBC store is missing latest version"))?;
 
+                let ibc_jmt_iter = jmt::JellyfishMerkleIterator::new_by_index(
+                    Arc::new(ibc_store),
+                    latest_version,
+                    0,
+                )?;
+
+                let ibc_state_map = ibc_jmt_iter
+                    .inspect(|result| {
+                        if let Err(err) = result {
+                            eprintln!("{err}");
+                        }
+                    })
+                    .filter_map(Result::ok)
+                    .collect::<HashMap<_, _>>();
+
+                let json_str =
+                    colored_json::to_colored_json_auto(&serde_json::to_value(&ibc_state_map)?)?;
                 println!("{json_str}");
 
                 Ok(())
