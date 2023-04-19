@@ -1,6 +1,7 @@
 use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
+    eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_proto::eclipse::ibc::client::v1::{
         AllModuleIds as RawAllModuleIds, ClientConnections as RawClientConnections,
         ConsensusHeights as RawConsensusHeights,
@@ -14,6 +15,7 @@ use {
     ibc::core::{
         ics02_client::height::Height,
         ics04_channel::packet::Sequence,
+        ics23_commitment::commitment::CommitmentRoot,
         ics24_host::{
             identifier::{ChannelId, ClientId, ConnectionId, PortId},
             path::{
@@ -32,10 +34,21 @@ use {
     },
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
+    solana_sdk::hash::Hash,
+    tendermint::time::Time as TendermintTime,
 };
 
 #[derive(Clone, Debug, Subcommand)]
 enum StateKind {
+    #[command(flatten)]
+    Merkle(MerkleStateKind),
+
+    #[command(flatten)]
+    Chain(ChainStateKind),
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum MerkleStateKind {
     ClientState {
         client_id: ClientId,
     },
@@ -98,7 +111,7 @@ enum StateKind {
     AllModules,
 }
 
-impl StateKind {
+impl MerkleStateKind {
     fn into_path(self) -> String {
         match self {
             Self::ClientState { client_id } => ClientStatePath(client_id).to_string(),
@@ -193,6 +206,27 @@ impl StateKind {
             Self::AllModules => get_json::<RawAllModuleIds>(ibc_state, &path),
         }
     }
+
+    async fn run(self, rpc_client: &RpcClient) -> anyhow::Result<()> {
+        let path = self.clone().into_path();
+        println!("{path}:");
+
+        let raw_account_data = rpc_client
+            .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
+            .await?;
+        let slot = rpc_client.get_slot().await?;
+
+        let IbcAccountData {
+            store: ibc_store, ..
+        } = bincode::deserialize(&raw_account_data)?;
+
+        let ibc_state = IbcState::new(&ibc_store, slot);
+
+        let json_str = self.get_json_str(&ibc_state)?;
+        println!("{json_str}");
+
+        Ok(())
+    }
 }
 
 fn get_json<T>(ibc_state: &IbcState<'_>, key: &str) -> anyhow::Result<String>
@@ -203,6 +237,47 @@ where
         .get_raw::<T>(key)?
         .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
     Ok(serde_json::to_string_pretty(&raw)?)
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum ChainStateKind {
+    HostHeight,
+    HostConsensusState { height: Height },
+}
+
+impl ChainStateKind {
+    async fn run(self, rpc_client: &RpcClient) -> anyhow::Result<()> {
+        match self {
+            Self::HostHeight => {
+                let slot = rpc_client.get_slot().await?;
+                let height = eclipse_chain::height_of_slot(slot)?;
+                println!("{height}");
+
+                Ok(())
+            }
+            Self::HostConsensusState { height } => {
+                let slot = eclipse_chain::slot_of_height(height)?;
+                let block = rpc_client.get_block(slot).await?;
+                let commitment_root =
+                    CommitmentRoot::from_bytes(block.blockhash.parse::<Hash>()?.as_ref());
+                let timestamp = TendermintTime::from_unix_timestamp(
+                    block
+                        .block_time
+                        .ok_or_else(|| anyhow!("Block timestamp should not be missing"))?,
+                    0,
+                )
+                .expect("Block time should be valid");
+                let consensus_state = EclipseConsensusState {
+                    commitment_root,
+                    timestamp,
+                };
+                // TODO: Print this in a better form
+                println!("{consensus_state:?}");
+
+                Ok(())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -217,24 +292,12 @@ pub(crate) struct Args {
 }
 
 pub(crate) async fn run(Args { endpoint, kind }: Args) -> anyhow::Result<()> {
-    let path = kind.clone().into_path();
-    println!("{path}:");
-
     let rpc_client = RpcClient::new(endpoint);
 
-    let raw_account_data = rpc_client
-        .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
-        .await?;
-    let slot = rpc_client.get_slot().await?;
-
-    let IbcAccountData {
-        store: ibc_store, ..
-    } = bincode::deserialize(&raw_account_data)?;
-
-    let ibc_state = IbcState::new(&ibc_store, slot);
-
-    let json_str = kind.get_json_str(&ibc_state)?;
-    println!("{json_str}");
+    match kind {
+        StateKind::Merkle(merkle_kind) => merkle_kind.run(&rpc_client).await?,
+        StateKind::Chain(chain_kind) => chain_kind.run(&rpc_client).await?,
+    }
 
     Ok(())
 }
