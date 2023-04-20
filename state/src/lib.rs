@@ -10,7 +10,9 @@ pub mod internal_path;
 
 pub use {
     all_module_ids::AllModuleIds,
-    client_and_consensus_states::{decode_client_state, decode_consensus_state},
+    client_and_consensus_states::{
+        decode_client_state, decode_consensus_state, encode_client_state, encode_consensus_state,
+    },
     client_connections::ClientConnections,
     consensus_heights::ConsensusHeights,
     ibc_account_data::IbcAccountData,

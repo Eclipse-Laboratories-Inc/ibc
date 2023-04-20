@@ -2,19 +2,15 @@ use {
     crate::module_instruction::*,
     anyhow::anyhow,
     core::ops::Bound::{Excluded, Unbounded},
-    eclipse_ibc_light_client::{eclipse_chain, EclipseClientState, EclipseConsensusState},
+    eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_state::{
-        decode_client_state, decode_consensus_state,
+        decode_client_state, decode_consensus_state, encode_client_state, encode_consensus_state,
         internal_path::{
             AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
         },
         AllModuleIds, ClientConnections, ConsensusHeights, IbcMetadata, IbcState, IbcStore,
     },
     ibc::{
-        clients::ics07_tendermint::{
-            client_state::ClientState as TendermintClientState,
-            consensus_state::ConsensusState as TendermintConsensusState,
-        },
         core::{
             context::{ContextError, ExecutionContext, Router, ValidationContext},
             ics02_client::{
@@ -132,28 +128,11 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         client_state_path: ClientStatePath,
         client_state: Box<dyn ClientState>,
     ) -> Result<(), ContextError> {
-        if let Some(client_state) = client_state
-            .as_any()
-            .downcast_ref::<TendermintClientState>()
-        {
-            self.state
-                .set(&client_state_path.to_string(), client_state.clone());
-            Ok(())
-        } else if let Some(client_state) =
-            client_state.as_any().downcast_ref::<EclipseClientState>()
-        {
-            self.state
-                .set(&client_state_path.to_string(), client_state.clone());
-            Ok(())
-        } else {
-            Err(ClientError::Other {
-                description: format!(
-                    "could not downcast client state to specific type; client type: {}",
-                    client_state.client_type(),
-                ),
-            }
-            .into())
-        }
+        self.state.set(
+            &client_state_path.to_string(),
+            encode_client_state(client_state)?,
+        );
+        Ok(())
     }
 
     fn store_consensus_state(
@@ -180,26 +159,11 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
                 description: err.to_string(),
             })?;
 
-        if let Some(consensus_state) = consensus_state
-            .as_any()
-            .downcast_ref::<TendermintConsensusState>()
-        {
-            self.state
-                .set(&consensus_state_path.to_string(), consensus_state.clone());
-            Ok(())
-        } else if let Some(consensus_state) = consensus_state
-            .as_any()
-            .downcast_ref::<EclipseConsensusState>()
-        {
-            self.state
-                .set(&consensus_state_path.to_string(), consensus_state.clone());
-            Ok(())
-        } else {
-            Err(ClientError::Other {
-                description: "could not downcast consensus state to specific type".to_owned(),
-            }
-            .into())
-        }
+        self.state.set(
+            &consensus_state_path.to_string(),
+            encode_consensus_state(consensus_state)?,
+        );
+        Ok(())
     }
 
     fn increase_client_counter(&mut self) {

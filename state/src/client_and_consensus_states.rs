@@ -29,6 +29,7 @@ use {
         },
         protobuf::Protobuf,
     },
+    known_proto::KnownAnyProto,
 };
 
 pub fn decode_client_state(
@@ -56,6 +57,27 @@ pub fn decode_client_state(
     }
 }
 
+pub fn encode_client_state(
+    client_state: Box<dyn ClientState>,
+) -> Result<protobuf::Any, ContextError> {
+    if let Some(client_state) = client_state
+        .as_any()
+        .downcast_ref::<TendermintClientState>()
+    {
+        Ok(client_state.clone().encode_as_any())
+    } else if let Some(client_state) = client_state.as_any().downcast_ref::<EclipseClientState>() {
+        Ok(client_state.clone().encode_as_any())
+    } else {
+        Err(ClientError::Other {
+            description: format!(
+                "could not downcast client state to specific type; client type: {}",
+                client_state.client_type(),
+            ),
+        }
+        .into())
+    }
+}
+
 pub fn decode_consensus_state(
     consensus_state: protobuf::Any,
 ) -> Result<Box<dyn ConsensusState>, ContextError> {
@@ -80,5 +102,26 @@ pub fn decode_consensus_state(
             consensus_state_type: consensus_state.type_url,
         }
         .into()),
+    }
+}
+
+pub fn encode_consensus_state(
+    consensus_state: Box<dyn ConsensusState>,
+) -> Result<protobuf::Any, ContextError> {
+    if let Some(consensus_state) = consensus_state
+        .as_any()
+        .downcast_ref::<TendermintConsensusState>()
+    {
+        Ok(consensus_state.clone().encode_as_any())
+    } else if let Some(consensus_state) = consensus_state
+        .as_any()
+        .downcast_ref::<EclipseConsensusState>()
+    {
+        Ok(consensus_state.clone().encode_as_any())
+    } else {
+        Err(ClientError::Other {
+            description: "could not downcast consensus state to specific type".to_owned(),
+        }
+        .into())
     }
 }

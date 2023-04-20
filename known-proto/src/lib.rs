@@ -3,8 +3,12 @@ use {
     bytes::Buf,
     ibc::{
         clients::ics07_tendermint::{
-            client_state::ClientState as TendermintClientState,
-            consensus_state::ConsensusState as TendermintConsensusState,
+            client_state::{
+                ClientState as TendermintClientState, TENDERMINT_CLIENT_STATE_TYPE_URL,
+            },
+            consensus_state::{
+                ConsensusState as TendermintConsensusState, TENDERMINT_CONSENSUS_STATE_TYPE_URL,
+            },
         },
         core::{
             ics02_client::{client_type::ClientType, height::Height},
@@ -104,8 +108,20 @@ impl KnownProtoWithFrom for TendermintClientState {
     type RawWithFrom = protobuf::Any;
 }
 
+impl KnownAnyProto for TendermintClientState {
+    fn type_url() -> String {
+        TENDERMINT_CLIENT_STATE_TYPE_URL.to_owned()
+    }
+}
+
 impl KnownProtoWithFrom for TendermintConsensusState {
     type RawWithFrom = protobuf::Any;
+}
+
+impl KnownAnyProto for TendermintConsensusState {
+    fn type_url() -> String {
+        TENDERMINT_CONSENSUS_STATE_TYPE_URL.to_owned()
+    }
 }
 
 impl KnownProtoWithFrom for ConnectionEnd {
