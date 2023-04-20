@@ -11,6 +11,7 @@ edition = "2021"
 anyhow = "1.0.70"
 bincode = "1.3.3"
 derive_more = "0.99.17"
+eclipse-ibc-light-client = { path = "../light-client" }
 eclipse-ibc-proto = { path = "../proto" }
 ibc = "0.37.0"
 ibc-proto = "0.26.0"

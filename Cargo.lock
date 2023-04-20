@@ -1439,6 +1439,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "derive_more",
+ "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
  "ibc",
  "ibc-proto",
