@@ -7,13 +7,16 @@ use {
         ConsensusHeights as RawConsensusHeights,
     },
     eclipse_ibc_state::{
+        decode_client_state, decode_consensus_state,
         internal_path::{
             AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
         },
         IbcAccountData, IbcState,
     },
     ibc::core::{
-        ics02_client::height::Height,
+        ics02_client::{
+            client_state::ClientState, consensus_state::ConsensusState, height::Height,
+        },
         ics04_channel::packet::Sequence,
         ics23_commitment::commitment::CommitmentRoot,
         ics24_host::{
@@ -189,8 +192,16 @@ impl MerkleStateKind {
     fn get_json_str(&self, ibc_state: &IbcState<'_>) -> anyhow::Result<String> {
         let path = self.clone().into_path();
         match self {
-            Self::ClientState { .. } => get_json::<protobuf::Any>(ibc_state, &path),
-            Self::ConsensusState { .. } => get_json::<protobuf::Any>(ibc_state, &path),
+            Self::ClientState { .. } => get_json_from_any::<Box<dyn ClientState>, _, _>(
+                ibc_state,
+                &path,
+                decode_client_state,
+            ),
+            Self::ConsensusState { .. } => get_json_from_any::<Box<dyn ConsensusState>, _, _>(
+                ibc_state,
+                &path,
+                decode_consensus_state,
+            ),
             Self::Connection { .. } => get_json::<RawConnectionEnd>(ibc_state, &path),
             Self::ClientConnections { .. } => get_json::<RawClientConnections>(ibc_state, &path),
             Self::Channel { .. } => get_json::<RawChannel>(ibc_state, &path),
@@ -209,9 +220,6 @@ impl MerkleStateKind {
     }
 
     async fn run(self, rpc_client: &RpcClient) -> anyhow::Result<()> {
-        let path = self.clone().into_path();
-        eprintln!("{path}:");
-
         let raw_account_data = rpc_client
             .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
             .await?;
@@ -241,6 +249,25 @@ where
     let raw = ibc_state
         .get_raw::<T>(key)?
         .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
+    Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
+        &raw,
+    )?)?)
+}
+
+fn get_json_from_any<T, F, E>(
+    ibc_state: &IbcState<'_>,
+    key: &str,
+    decode_any: F,
+) -> anyhow::Result<String>
+where
+    T: Serialize,
+    F: FnOnce(protobuf::Any) -> Result<T, E>,
+    E: std::error::Error + Send + Sync + 'static,
+{
+    let raw_any = ibc_state
+        .get_raw::<protobuf::Any>(key)?
+        .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
+    let raw = decode_any(raw_any)?;
     Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
         &raw,
     )?)?)
