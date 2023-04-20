@@ -1,21 +1,21 @@
 [package]
 name = "eclipse-ibc-light-client"
 description = "Eclipse IBC light client"
-version = "0.1.0"
-homepage = "https://eclipse.builders/"
-repository = "https://github.com/Eclipse-Laboratories-Inc/ibc"
-authors = ["Eclipse Developers"]
-edition = "2021"
+version = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
-eclipse-ibc-proto = { path = "../proto" }
-ibc = "0.37.0"
-ibc-proto = "0.26.0"
-ics23 = "0.9.0"
-jmt = "=0.4.0"
-known-proto = { path = "../known-proto" }
-prost = "0.11.9"
-serde = "1.0.160"
-solana-sdk = "=1.15.2"
-tendermint = "0.29.1"
-thiserror = "1.0.40"
+eclipse-ibc-proto = { workspace = true }
+ibc = { workspace = true }
+ibc-proto = { workspace = true }
+ics23 = { workspace = true }
+jmt = { workspace = true }
+known-proto = { workspace = true }
+prost = { workspace = true }
+serde = { workspace = true }
+solana-sdk = { workspace = true }
+tendermint = { workspace = true }
+thiserror = { workspace = true }

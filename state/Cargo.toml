@@ -1,25 +1,25 @@
 [package]
 name = "eclipse-ibc-state"
 description = "Eclipse IBC state"
-version = "0.1.0"
-homepage = "https://eclipse.builders/"
-repository = "https://github.com/Eclipse-Laboratories-Inc/ibc"
-authors = ["Eclipse Developers"]
-edition = "2021"
+version = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
-anyhow = "1.0.70"
-bincode = "1.3.3"
-derive_more = "0.99.17"
-eclipse-ibc-light-client = { path = "../light-client" }
-eclipse-ibc-proto = { path = "../proto" }
-ibc = "0.37.0"
-ibc-proto = "0.26.0"
-ics23 = "0.9.0"
-jmt = "=0.4.0"
-known-proto = { path = "../known-proto" }
-prost = "0.11.9"
-serde = "1.0.160"
-sha2 = "0.10.6"
-solana-program-runtime = "=1.15.2"
-solana-sdk = "=1.15.2"
+anyhow = { workspace = true }
+bincode = { workspace = true }
+derive_more = { workspace = true }
+eclipse-ibc-light-client = { workspace = true }
+eclipse-ibc-proto = { workspace = true }
+ibc = { workspace = true }
+ibc-proto = { workspace = true }
+ics23 = { workspace = true }
+jmt = { workspace = true }
+known-proto = { workspace = true }
+prost = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+solana-program-runtime = { workspace = true }
+solana-sdk = { workspace = true }
