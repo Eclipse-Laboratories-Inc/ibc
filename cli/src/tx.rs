@@ -38,27 +38,33 @@ use {
     tendermint::time::Time as TendermintTime,
 };
 
+#[derive(Clone, Debug, Subcommand)]
+enum AdminTx {
+    InitStorageAccount,
+}
+
+impl AdminTx {
+    fn encode_as_any(&self) -> protobuf::Any {
+        match self {
+            Self::InitStorageAccount => MsgInitStorageAccount.encode_as_any(),
+        }
+    }
+}
+
 fn parse_commitment_root(raw: &str) -> Result<CommitmentRoot, hex::FromHexError> {
     Ok(hex::decode(raw)?.into())
 }
 
 #[derive(Clone, Debug, Subcommand)]
-enum TxKind {
-    BindPort {
-        port_id: PortId,
-    },
-    CreateClientEclipse {
+enum ClientTx {
+    CreateEclipse {
         chain_id: ChainId,
         #[arg(value_parser = ValueParser::new(parse_commitment_root))]
         commitment_root: CommitmentRoot,
         height: Height,
         timestamp: TendermintTime,
     },
-    InitStorageAccount,
-    ReleasePort {
-        port_id: PortId,
-    },
-    UpdateClientEclipse {
+    UpdateEclipse {
         client_id: ClientId,
         #[arg(value_parser = ValueParser::new(parse_commitment_root))]
         commitment_root: CommitmentRoot,
@@ -67,14 +73,10 @@ enum TxKind {
     },
 }
 
-impl TxKind {
+impl ClientTx {
     fn encode_as_any(&self, payer_key: Pubkey) -> protobuf::Any {
         match self {
-            Self::BindPort { port_id } => MsgBindPort {
-                port_id: port_id.clone(),
-            }
-            .encode_as_any(),
-            Self::CreateClientEclipse {
+            Self::CreateEclipse {
                 chain_id,
                 commitment_root,
                 height,
@@ -104,7 +106,7 @@ impl TxKind {
                 )
                 .to_any()
             }
-            Self::UpdateClientEclipse {
+            Self::UpdateEclipse {
                 client_id,
                 commitment_root,
                 height,
@@ -129,11 +131,47 @@ impl TxKind {
                     value: <_ as Protobuf<RawMsgUpdateClient>>::encode_vec(&msg).unwrap(),
                 }
             }
-            Self::InitStorageAccount => MsgInitStorageAccount.encode_as_any(),
-            Self::ReleasePort { port_id } => MsgReleasePort {
+        }
+    }
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum PortTx {
+    Bind { port_id: PortId },
+    Release { port_id: PortId },
+}
+
+impl PortTx {
+    fn encode_as_any(&self) -> protobuf::Any {
+        match self {
+            Self::Bind { port_id } => MsgBindPort {
                 port_id: port_id.clone(),
             }
             .encode_as_any(),
+            Self::Release { port_id } => MsgReleasePort {
+                port_id: port_id.clone(),
+            }
+            .encode_as_any(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum TxKind {
+    #[command(subcommand)]
+    Admin(AdminTx),
+    #[command(subcommand)]
+    Client(ClientTx),
+    #[command(subcommand)]
+    Port(PortTx),
+}
+
+impl TxKind {
+    fn encode_as_any(&self, payer_key: Pubkey) -> protobuf::Any {
+        match self {
+            Self::Admin(admin_tx) => admin_tx.encode_as_any(),
+            Self::Client(client_tx) => client_tx.encode_as_any(payer_key),
+            Self::Port(port_tx) => port_tx.encode_as_any(),
         }
     }
 
@@ -143,10 +181,13 @@ impl TxKind {
 
     fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {
         match self {
-            Self::BindPort { .. }
-            | Self::CreateClientEclipse { .. }
-            | Self::ReleasePort { .. }
-            | Self::UpdateClientEclipse { .. } => {
+            Self::Admin(_) => vec![
+                AccountMeta::new_readonly(payer_key, true),
+                AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
+                AccountMeta::new_readonly(rent::id(), false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+            Self::Port(_) | Self::Client(_) => {
                 vec![
                     AccountMeta::new_readonly(payer_key, true),
                     AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
@@ -154,12 +195,6 @@ impl TxKind {
                     AccountMeta::new_readonly(slot_hashes::id(), false),
                 ]
             }
-            Self::InitStorageAccount => vec![
-                AccountMeta::new_readonly(payer_key, true),
-                AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
-                AccountMeta::new_readonly(rent::id(), false),
-                AccountMeta::new_readonly(system_program::id(), false),
-            ],
         }
     }
 }
