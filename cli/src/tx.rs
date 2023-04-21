@@ -1,42 +1,48 @@
 use {
     anyhow::anyhow,
-    clap::{builder::ValueParser, Parser, Subcommand},
-    eclipse_ibc_light_client::{EclipseClientState, EclipseConsensusState, EclipseHeader},
+    clap::{Parser, Subcommand},
     eclipse_ibc_program::ibc_instruction::msgs::{
         MsgBindPort, MsgInitStorageAccount, MsgReleasePort,
     },
-    ibc::{
-        core::{
-            ics02_client::{
-                height::Height,
-                msgs::{
-                    create_client::MsgCreateClient,
-                    update_client::{self, MsgUpdateClient},
-                },
-            },
-            ics23_commitment::commitment::CommitmentRoot,
-            ics24_host::identifier::{ChainId, ClientId, PortId},
-        },
-        tx_msg::Msg as _,
-    },
+    ibc::core::ics24_host::identifier::PortId,
     ibc_proto::{
-        google::protobuf, ibc::core::client::v1::MsgUpdateClient as RawMsgUpdateClient,
-        protobuf::Protobuf,
+        google::protobuf,
+        ibc::core::{
+            client::v1::{
+                MsgCreateClient as RawMsgCreateClient,
+                MsgSubmitMisbehaviour as RawMsgSubmitMisbehaviour,
+                MsgUpdateClient as RawMsgUpdateClient, MsgUpgradeClient as RawMsgUpgradeClient,
+            },
+            connection::v1::{
+                MsgConnectionOpenAck as RawMsgConnectionOpenAck,
+                MsgConnectionOpenConfirm as RawMsgConnectionOpenConfirm,
+                MsgConnectionOpenInit as RawMsgConnectionOpenInit,
+                MsgConnectionOpenTry as RawMsgConnectionOpenTry,
+            },
+        },
     },
     known_proto::{KnownAnyProto, KnownProto},
+    prost::Message as _,
+    serde::de::DeserializeOwned,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
         message::Message,
         pubkey::Pubkey,
-        signer::{keypair::read_keypair_file, Signer},
+        signer::{keypair::read_keypair_file, Signer as _},
         system_program,
         sysvar::{clock, rent, slot_hashes},
         transaction::Transaction,
     },
     std::path::PathBuf,
-    tendermint::time::Time as TendermintTime,
 };
+
+fn parse_as_json<T>(s: &str) -> serde_json::Result<T>
+where
+    T: DeserializeOwned,
+{
+    serde_json::from_str(&s)
+}
 
 #[derive(Clone, Debug, Subcommand)]
 enum AdminTx {
@@ -51,84 +57,134 @@ impl AdminTx {
     }
 }
 
-fn parse_commitment_root(raw: &str) -> Result<CommitmentRoot, hex::FromHexError> {
-    Ok(hex::decode(raw)?.into())
-}
-
 #[derive(Clone, Debug, Subcommand)]
 enum ClientTx {
-    CreateEclipse {
-        chain_id: ChainId,
-        #[arg(value_parser = ValueParser::new(parse_commitment_root))]
-        commitment_root: CommitmentRoot,
-        height: Height,
-        timestamp: TendermintTime,
+    Create {
+        #[arg(value_parser = parse_as_json::<RawMsgCreateClient>)]
+        msg: RawMsgCreateClient,
     },
-    UpdateEclipse {
-        client_id: ClientId,
-        #[arg(value_parser = ValueParser::new(parse_commitment_root))]
-        commitment_root: CommitmentRoot,
-        height: Height,
-        timestamp: TendermintTime,
+    Update {
+        #[arg(value_parser = parse_as_json::<RawMsgUpdateClient>)]
+        msg: RawMsgUpdateClient,
+    },
+    Misbehaviour {
+        #[arg(value_parser = parse_as_json::<RawMsgSubmitMisbehaviour>)]
+        msg: RawMsgSubmitMisbehaviour,
+    },
+    Upgrade {
+        #[arg(value_parser = parse_as_json::<RawMsgUpgradeClient>)]
+        msg: RawMsgUpgradeClient,
     },
 }
 
 impl ClientTx {
-    fn encode_as_any(&self, payer_key: Pubkey) -> protobuf::Any {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
         match self {
-            Self::CreateEclipse {
-                chain_id,
-                commitment_root,
-                height,
-                timestamp,
-            } => {
-                let latest_header = EclipseHeader {
-                    height: *height,
-                    commitment_root: commitment_root.clone(),
-                    timestamp: *timestamp,
-                };
-                let consensus_state = EclipseConsensusState {
-                    commitment_root: commitment_root.clone(),
-                    timestamp: *timestamp,
-                };
-                let client_state = EclipseClientState {
-                    chain_id: chain_id.clone(),
-                    latest_header,
-                    frozen_height: None,
-                };
-                MsgCreateClient::new(
-                    client_state.encode_as_any(),
-                    consensus_state.encode_as_any(),
-                    payer_key
-                        .to_string()
-                        .parse()
-                        .expect("Pubkey should never be empty"),
-                )
-                .to_any()
-            }
-            Self::UpdateEclipse {
-                client_id,
-                commitment_root,
-                height,
-                timestamp,
-            } => {
-                let latest_header = EclipseHeader {
-                    height: *height,
-                    commitment_root: commitment_root.clone(),
-                    timestamp: *timestamp,
-                };
-                let msg = MsgUpdateClient {
-                    client_id: client_id.clone(),
-                    client_message: latest_header.encode_as_any(),
-                    update_kind: update_client::UpdateKind::UpdateClient,
-                    signer: payer_key
-                        .to_string()
-                        .parse()
-                        .expect("Pubkey should never be empty"),
+            Self::Create { msg } => {
+                let msg = RawMsgCreateClient {
+                    signer: signer.to_string(),
+                    ..msg.clone()
                 };
                 protobuf::Any {
-                    type_url: update_client::UPDATE_CLIENT_TYPE_URL.to_owned(),
-                    value: <_ as Protobuf<RawMsgUpdateClient>>::encode_vec(&msg).unwrap(),
+                    type_url: "/ibc.core.client.v1.MsgCreateClient".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::Update { msg } => {
+                let msg = RawMsgUpdateClient {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.client.v1.MsgUpdateClient".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::Misbehaviour { msg } => {
+                let msg = RawMsgSubmitMisbehaviour {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.client.v1.MsgSubmitMisbehaviour".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::Upgrade { msg } => {
+                let msg = RawMsgUpgradeClient {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.client.v1.MsgUpgradeClient".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum ConnectionTx {
+    OpenInit {
+        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenInit>)]
+        msg: RawMsgConnectionOpenInit,
+    },
+    OpenTry {
+        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenTry>)]
+        msg: RawMsgConnectionOpenTry,
+    },
+    OpenAck {
+        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenAck>)]
+        msg: RawMsgConnectionOpenAck,
+    },
+    OpenConfirm {
+        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenConfirm>)]
+        msg: RawMsgConnectionOpenConfirm,
+    },
+}
+
+impl ConnectionTx {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
+        match self {
+            Self::OpenInit { msg } => {
+                let msg = RawMsgConnectionOpenInit {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenInit".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::OpenTry { msg } => {
+                let msg = RawMsgConnectionOpenTry {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenTry".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::OpenAck { msg } => {
+                let msg = RawMsgConnectionOpenAck {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenAck".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::OpenConfirm { msg } => {
+                let msg = RawMsgConnectionOpenConfirm {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenConfirm".to_owned(),
+                    value: msg.encode_to_vec(),
                 }
             }
         }
@@ -163,20 +219,27 @@ enum TxKind {
     #[command(subcommand)]
     Client(ClientTx),
     #[command(subcommand)]
+    Connection(ConnectionTx),
+    #[command(subcommand)]
     Port(PortTx),
 }
 
 impl TxKind {
-    fn encode_as_any(&self, payer_key: Pubkey) -> protobuf::Any {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
         match self {
-            Self::Admin(admin_tx) => admin_tx.encode_as_any(),
-            Self::Client(client_tx) => client_tx.encode_as_any(payer_key),
-            Self::Port(port_tx) => port_tx.encode_as_any(),
+            Self::Admin(tx) => tx.encode_as_any(),
+            Self::Client(tx) => tx.encode_as_any(signer),
+            Self::Connection(tx) => tx.encode_as_any(signer),
+            Self::Port(tx) => tx.encode_as_any(),
         }
     }
 
     fn instruction_data(&self, payer_key: Pubkey) -> Vec<u8> {
-        self.encode_as_any(payer_key).encode()
+        let signer = payer_key
+            .to_string()
+            .parse()
+            .expect("Pubkey should never be empty");
+        self.encode_as_any(signer).encode()
     }
 
     fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {
@@ -187,7 +250,7 @@ impl TxKind {
                 AccountMeta::new_readonly(rent::id(), false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
-            Self::Port(_) | Self::Client(_) => {
+            Self::Client(_) | Self::Connection(_) | Self::Port(_) => {
                 vec![
                     AccountMeta::new_readonly(payer_key, true),
                     AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
