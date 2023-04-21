@@ -6,6 +6,7 @@ use {
     eclipse_ibc_proto::eclipse::ibc::chain::v1::{
         ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
     },
+    eclipse_known_proto::KnownAnyProto,
     ibc::{
         clients::ics07_tendermint::{
             client_state::{
@@ -29,7 +30,6 @@ use {
         },
         protobuf::Protobuf,
     },
-    known_proto::KnownAnyProto,
 };
 
 pub fn decode_client_state(

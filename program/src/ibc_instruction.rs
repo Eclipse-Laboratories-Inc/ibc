@@ -1,4 +1,5 @@
 use {
+    eclipse_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     ibc::{
         core::{
             ics02_client::msgs::{
@@ -19,7 +20,6 @@ use {
         },
         protobuf::Protobuf,
     },
-    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     thiserror::Error,
 };
 
@@ -30,8 +30,8 @@ pub mod msgs {
             admin::v1::MsgInitStorageAccount as RawMsgInitStorageAccount,
             port::v1::{MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort},
         },
+        eclipse_known_proto::{KnownAnyProto, KnownProtoWithFrom},
         ibc::core::ics24_host::identifier::PortId,
-        known_proto::{KnownAnyProto, KnownProtoWithFrom},
     };
 
     #[derive(Clone, Debug)]

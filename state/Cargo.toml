@@ -13,11 +13,11 @@ bincode = { workspace = true }
 derive_more = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
+eclipse-known-proto = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }
 ics23 = { workspace = true }
 jmt = { workspace = true }
-known-proto = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }

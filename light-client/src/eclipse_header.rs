@@ -1,6 +1,7 @@
 use {
     crate::{error::Error, EclipseConsensusState},
     eclipse_ibc_proto::eclipse::ibc::chain::v1::Header as RawEclipseHeader,
+    eclipse_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     ibc::{
         core::{
             ics02_client::{error::ClientError, header::Header, height::Height},
@@ -9,7 +10,6 @@ use {
         timestamp::Timestamp,
     },
     ibc_proto::{google::protobuf, protobuf::Protobuf},
-    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     serde::Serialize,
     tendermint::time::Time as TendermintTime,
 };

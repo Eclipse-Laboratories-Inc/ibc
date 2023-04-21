@@ -13,10 +13,10 @@ bincode = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
 eclipse-ibc-state = { workspace = true }
+eclipse-known-proto = { workspace = true }
 hex = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }
-known-proto = { workspace = true }
 serde = { workspace = true }
 solana-program-runtime = { workspace = true }
 solana-sdk = { workspace = true }

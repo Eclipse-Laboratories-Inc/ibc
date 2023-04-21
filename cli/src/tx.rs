@@ -4,6 +4,7 @@ use {
     eclipse_ibc_program::ibc_instruction::msgs::{
         MsgBindPort, MsgInitStorageAccount, MsgReleasePort,
     },
+    eclipse_known_proto::{KnownAnyProto, KnownProto},
     ibc::core::ics24_host::identifier::PortId,
     ibc_proto::{
         google::protobuf,
@@ -21,7 +22,6 @@ use {
             },
         },
     },
-    known_proto::{KnownAnyProto, KnownProto},
     prost::Message as _,
     serde::de::DeserializeOwned,
     solana_client::nonblocking::rpc_client::RpcClient,

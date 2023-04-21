@@ -2,6 +2,7 @@ use {
     crate::{eclipse_chain, error::Error, EclipseConsensusState, EclipseHeader},
     core::time::Duration,
     eclipse_ibc_proto::eclipse::ibc::chain::v1::ClientState as RawEclipseClientState,
+    eclipse_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     ibc::core::{
         context::{ContextError, ExecutionContext, ValidationContext},
         ics02_client::{
@@ -26,7 +27,6 @@ use {
         ibc::core::commitment::v1::{MerklePath, MerkleProof as RawMerkleProof, MerkleRoot},
         protobuf::Protobuf,
     },
-    known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     serde::Serialize,
 };
 

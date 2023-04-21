@@ -18,11 +18,11 @@ eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-program = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
 eclipse-ibc-state = { workspace = true }
+eclipse-known-proto = { workspace = true }
 hex = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }
 jmt = { workspace = true }
-known-proto = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

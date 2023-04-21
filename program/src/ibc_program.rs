@@ -8,9 +8,9 @@ use {
         id,
     },
     eclipse_ibc_state::IbcAccountData,
+    eclipse_known_proto::KnownProto,
     ibc::core::handler::dispatch,
     ibc_proto::google::protobuf,
-    known_proto::KnownProto,
     solana_program_runtime::{
         ic_msg, invoke_context::InvokeContext, sysvar_cache::get_sysvar_with_account_check,
     },
