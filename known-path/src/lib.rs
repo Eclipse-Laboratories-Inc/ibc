@@ -1,26 +1,79 @@
 use {
     core::fmt::Display,
-    ibc::core::ics24_host::path::{
-        AckPath, ChannelEndPath, ClientConnectionPath, ClientConsensusStatePath, ClientStatePath,
-        ClientTypePath, CommitmentPath, ConnectionPath, PortPath, ReceiptPath, SeqAckPath,
-        SeqRecvPath, SeqSendPath,
+    eclipse_ibc_extra_types::ClientConnections,
+    eclipse_known_proto::KnownProto,
+    ibc::core::{
+        ics02_client::client_type::ClientType,
+        ics03_connection::connection::ConnectionEnd,
+        ics04_channel::{
+            channel::ChannelEnd,
+            commitment::{AcknowledgementCommitment, PacketCommitment},
+            packet::{Receipt, Sequence},
+        },
+        ics24_host::path::{
+            AckPath, ChannelEndPath, ClientConnectionPath, ClientConsensusStatePath,
+            ClientStatePath, ClientTypePath, CommitmentPath, ConnectionPath, PortPath, ReceiptPath,
+            SeqAckPath, SeqRecvPath, SeqSendPath,
+        },
+        ics26_routing::context::ModuleId,
     },
+    ibc_proto::google::protobuf,
 };
 
 /// This is a marker trait for the Merkle store to prevent us from accidentally
 /// using a type that is not a path as a key for the store.
-pub trait KnownPath: Display {}
+pub trait KnownPath: Display {
+    type Value: KnownProto;
+}
 
-impl KnownPath for AckPath {}
-impl KnownPath for ChannelEndPath {}
-impl KnownPath for ClientConnectionPath {}
-impl KnownPath for ClientConsensusStatePath {}
-impl KnownPath for ClientStatePath {}
-impl KnownPath for ClientTypePath {}
-impl KnownPath for CommitmentPath {}
-impl KnownPath for ConnectionPath {}
-impl KnownPath for PortPath {}
-impl KnownPath for ReceiptPath {}
-impl KnownPath for SeqAckPath {}
-impl KnownPath for SeqRecvPath {}
-impl KnownPath for SeqSendPath {}
+impl KnownPath for AckPath {
+    type Value = AcknowledgementCommitment;
+}
+
+impl KnownPath for ChannelEndPath {
+    type Value = ChannelEnd;
+}
+
+impl KnownPath for ClientConnectionPath {
+    type Value = ClientConnections;
+}
+
+impl KnownPath for ClientConsensusStatePath {
+    type Value = protobuf::Any;
+}
+
+impl KnownPath for ClientStatePath {
+    type Value = protobuf::Any;
+}
+
+impl KnownPath for ClientTypePath {
+    type Value = ClientType;
+}
+
+impl KnownPath for CommitmentPath {
+    type Value = PacketCommitment;
+}
+
+impl KnownPath for ConnectionPath {
+    type Value = ConnectionEnd;
+}
+
+impl KnownPath for PortPath {
+    type Value = ModuleId;
+}
+
+impl KnownPath for ReceiptPath {
+    type Value = Receipt;
+}
+
+impl KnownPath for SeqAckPath {
+    type Value = Sequence;
+}
+
+impl KnownPath for SeqRecvPath {
+    type Value = Sequence;
+}
+
+impl KnownPath for SeqSendPath {
+    type Value = Sequence;
+}

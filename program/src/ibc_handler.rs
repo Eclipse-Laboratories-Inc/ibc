@@ -2,13 +2,14 @@ use {
     crate::module_instruction::*,
     anyhow::anyhow,
     core::ops::Bound::{Excluded, Unbounded},
+    eclipse_ibc_extra_types::{AllModuleIds, ClientConnections, ConsensusHeights},
     eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_state::{
         decode_client_state, decode_consensus_state, encode_client_state, encode_consensus_state,
         internal_path::{
             AllModulesPath, ClientUpdateHeightPath, ClientUpdateTimePath, ConsensusHeightsPath,
         },
-        AllModuleIds, ClientConnections, ConsensusHeights, IbcMetadata, IbcState, IbcStore,
+        IbcMetadata, IbcState, IbcStore,
     },
     ibc::{
         core::{

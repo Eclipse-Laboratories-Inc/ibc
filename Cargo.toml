@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "cli",
+    "extra-types",
     "known-path",
     "known-proto",
     "light-client",
@@ -26,6 +27,7 @@ clap = { version = "4.2.4", features = ["derive"] }
 colored_json = "3.1.0"
 derive_more = "0.99.17"
 dirs-next = "2.0.0"
+eclipse-ibc-extra-types = { path = "extra-types" }
 eclipse-ibc-known-path = { path = "known-path" }
 eclipse-ibc-light-client = { path = "light-client" }
 eclipse-ibc-program = { path = "program" }

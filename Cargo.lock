@@ -1366,7 +1366,6 @@ dependencies = [
  "eclipse-ibc-known-path",
  "eclipse-ibc-light-client",
  "eclipse-ibc-program",
- "eclipse-ibc-proto",
  "eclipse-ibc-state",
  "eclipse-known-proto",
  "hex",
@@ -1383,10 +1382,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "eclipse-ibc-extra-types"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "eclipse-ibc-proto",
+ "eclipse-known-proto",
+ "ibc",
+ "ibc-proto",
+]
+
+[[package]]
 name = "eclipse-ibc-known-path"
 version = "0.1.0"
 dependencies = [
+ "eclipse-ibc-extra-types",
+ "eclipse-known-proto",
  "ibc",
+ "ibc-proto",
 ]
 
 [[package]]
@@ -1412,6 +1425,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "eclipse-ibc-extra-types",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
  "eclipse-ibc-state",
@@ -1447,6 +1461,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "derive_more",
+ "eclipse-ibc-extra-types",
  "eclipse-ibc-known-path",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",

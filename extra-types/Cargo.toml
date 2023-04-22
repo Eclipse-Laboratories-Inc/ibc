@@ -1,6 +1,6 @@
 [package]
-name = "eclipse-ibc-known-path"
-description = "Eclipse IBC known paths in the Merkle store"
+name = "eclipse-ibc-extra-types"
+description = "Eclipse IBC domain types that map to raw IBC types"
 version = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
@@ -8,7 +8,8 @@ authors = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-eclipse-ibc-extra-types = { workspace = true }
+anyhow = { workspace = true }
+eclipse-ibc-proto = { workspace = true }
 eclipse-known-proto = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }
