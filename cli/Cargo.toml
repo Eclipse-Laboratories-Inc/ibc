@@ -14,6 +14,7 @@ bs58 = { workspace = true }
 clap = { workspace = true }
 colored_json = { workspace = true }
 dirs-next = { workspace = true }
+eclipse-ibc-known-path = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-program = { workspace = true }
 eclipse-ibc-proto = { workspace = true }

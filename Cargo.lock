@@ -1363,6 +1363,7 @@ dependencies = [
  "clap 4.2.4",
  "colored_json",
  "dirs-next",
+ "eclipse-ibc-known-path",
  "eclipse-ibc-light-client",
  "eclipse-ibc-program",
  "eclipse-ibc-proto",
@@ -1379,6 +1380,13 @@ dependencies = [
  "solana-sdk",
  "tendermint",
  "tokio",
+]
+
+[[package]]
+name = "eclipse-ibc-known-path"
+version = "0.1.0"
+dependencies = [
+ "ibc",
 ]
 
 [[package]]
@@ -1439,6 +1447,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "derive_more",
+ "eclipse-ibc-known-path",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
  "eclipse-known-proto",

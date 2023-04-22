@@ -1,6 +1,7 @@
 use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
+    eclipse_ibc_known_path::KnownPath,
     eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_proto::eclipse::ibc::client::v1::{
         AllModuleIds as RawAllModuleIds, ClientConnections as RawClientConnections,
@@ -58,8 +59,7 @@ enum MerkleStateKind {
     },
     ConsensusState {
         client_id: ClientId,
-        epoch: u64,
-        height: u64,
+        height: Height,
     },
     Connection {
         connection_id: ConnectionId,
@@ -116,106 +116,76 @@ enum MerkleStateKind {
 }
 
 impl MerkleStateKind {
-    fn into_path(self) -> String {
+    fn get_json_str(&self, ibc_state: &IbcState<'_>) -> anyhow::Result<String> {
         match self {
-            Self::ClientState { client_id } => ClientStatePath(client_id).to_string(),
-            Self::ConsensusState {
-                client_id,
-                epoch,
-                height,
-            } => ClientConsensusStatePath {
-                client_id,
-                epoch,
-                height,
+            Self::ClientState { client_id } => get_json_from_any::<_, Box<dyn ClientState>, _, _>(
+                ibc_state,
+                &ClientStatePath::new(client_id),
+                decode_client_state,
+            ),
+            Self::ConsensusState { client_id, height } => {
+                get_json_from_any::<_, Box<dyn ConsensusState>, _, _>(
+                    ibc_state,
+                    &ClientConsensusStatePath::new(client_id, height),
+                    decode_consensus_state,
+                )
             }
-            .to_string(),
-            Self::Connection { connection_id } => ConnectionPath(connection_id).to_string(),
-            Self::ClientConnections { client_id } => ClientConnectionPath(client_id).to_string(),
+            Self::Connection { connection_id } => {
+                get_json::<_, RawConnectionEnd>(ibc_state, &ConnectionPath::new(connection_id))
+            }
+            Self::ClientConnections { client_id } => get_json::<_, RawClientConnections>(
+                ibc_state,
+                &ClientConnectionPath::new(client_id),
+            ),
             Self::Channel {
                 port_id,
                 channel_id,
-            } => ChannelEndPath(port_id, channel_id).to_string(),
+            } => get_json::<_, RawChannel>(ibc_state, &ChannelEndPath::new(port_id, channel_id)),
             Self::NextSequenceSend {
                 port_id,
                 channel_id,
-            } => SeqSendPath(port_id, channel_id).to_string(),
+            } => get_json::<_, u64>(ibc_state, &SeqSendPath::new(port_id, channel_id)),
             Self::NextSequenceRecv {
                 port_id,
                 channel_id,
-            } => SeqRecvPath(port_id, channel_id).to_string(),
+            } => get_json::<_, u64>(ibc_state, &SeqRecvPath::new(port_id, channel_id)),
             Self::NextSequenceAck {
                 port_id,
                 channel_id,
-            } => SeqAckPath(port_id, channel_id).to_string(),
+            } => get_json::<_, u64>(ibc_state, &SeqAckPath::new(port_id, channel_id)),
             Self::PacketCommitment {
                 port_id,
                 channel_id,
                 sequence,
-            } => CommitmentPath {
-                port_id,
-                channel_id,
-                sequence,
-            }
-            .to_string(),
+            } => get_json::<_, Vec<u8>>(
+                ibc_state,
+                &CommitmentPath::new(port_id, channel_id, *sequence),
+            ),
             Self::PacketReceipt {
                 port_id,
                 channel_id,
                 sequence,
-            } => ReceiptPath {
-                port_id,
-                channel_id,
-                sequence,
+            } => {
+                get_json::<_, Vec<u8>>(ibc_state, &ReceiptPath::new(port_id, channel_id, *sequence))
             }
-            .to_string(),
             Self::PacketAcknowledgement {
                 port_id,
                 channel_id,
                 sequence,
-            } => AckPath {
-                port_id,
-                channel_id,
-                sequence,
-            }
-            .to_string(),
-            Self::Port { port_id } => PortPath(port_id).to_string(),
+            } => get_json::<_, Vec<u8>>(ibc_state, &AckPath::new(port_id, channel_id, *sequence)),
+            Self::Port { port_id } => get_json::<_, String>(ibc_state, &PortPath(port_id.clone())),
             Self::ClientUpdateTime { client_id, height } => {
-                ClientUpdateTimePath(client_id, height).to_string()
+                get_json::<_, u64>(ibc_state, &ClientUpdateTimePath(client_id.clone(), *height))
             }
-            Self::ClientUpdateHeight { client_id, height } => {
-                ClientUpdateHeightPath(client_id, height).to_string()
-            }
-            Self::ConsensusHeights { client_id } => ConsensusHeightsPath(client_id).to_string(),
-            Self::AllModules => AllModulesPath.to_string(),
-        }
-    }
-
-    fn get_json_str(&self, ibc_state: &IbcState<'_>) -> anyhow::Result<String> {
-        let path = self.clone().into_path();
-        match self {
-            Self::ClientState { .. } => get_json_from_any::<Box<dyn ClientState>, _, _>(
+            Self::ClientUpdateHeight { client_id, height } => get_json::<_, RawHeight>(
                 ibc_state,
-                &path,
-                decode_client_state,
+                &ClientUpdateHeightPath(client_id.clone(), *height),
             ),
-            Self::ConsensusState { .. } => get_json_from_any::<Box<dyn ConsensusState>, _, _>(
+            Self::ConsensusHeights { client_id } => get_json::<_, RawConsensusHeights>(
                 ibc_state,
-                &path,
-                decode_consensus_state,
+                &ConsensusHeightsPath(client_id.clone()),
             ),
-            Self::Connection { .. } => get_json::<RawConnectionEnd>(ibc_state, &path),
-            Self::ClientConnections { .. } => get_json::<RawClientConnections>(ibc_state, &path),
-            Self::Channel { .. } => get_json::<RawChannel>(ibc_state, &path),
-            Self::NextSequenceSend { .. } => get_json::<u64>(ibc_state, &path),
-            Self::NextSequenceRecv { .. } => get_json::<u64>(ibc_state, &path),
-            Self::NextSequenceAck { .. } => get_json::<u64>(ibc_state, &path),
-            Self::PacketCommitment { .. } => get_json::<Vec<u8>>(ibc_state, &path),
-            Self::PacketReceipt { .. } => get_json::<Vec<u8>>(ibc_state, &path),
-            Self::PacketAcknowledgement { .. } => get_json::<Vec<u8>>(ibc_state, &path),
-            Self::Port { .. } => get_json::<String>(ibc_state, &path),
-            Self::ClientUpdateTime { .. } => get_json::<u64>(ibc_state, &path),
-            Self::ClientUpdateHeight { .. } => get_json::<RawHeight>(ibc_state, &path),
-            Self::ConsensusHeights { .. } => get_json::<RawConsensusHeights>(ibc_state, &path),
-            Self::AllModules => get_json::<RawAllModuleIds>(ibc_state, &path),
+            Self::AllModules => get_json::<_, RawAllModuleIds>(ibc_state, &AllModulesPath),
         }
     }
 
@@ -242,30 +212,32 @@ impl MerkleStateKind {
     }
 }
 
-fn get_json<T>(ibc_state: &IbcState<'_>, key: &str) -> anyhow::Result<String>
+fn get_json<K, T>(ibc_state: &IbcState<'_>, key: &K) -> anyhow::Result<String>
 where
+    K: KnownPath,
     T: Default + prost::Message + Serialize,
 {
     let raw = ibc_state
-        .get_raw::<T>(key)?
+        .get_raw::<K, T>(key)?
         .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
     Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
         &raw,
     )?)?)
 }
 
-fn get_json_from_any<T, F, E>(
+fn get_json_from_any<K, T, F, E>(
     ibc_state: &IbcState<'_>,
-    key: &str,
+    key: &K,
     decode_any: F,
 ) -> anyhow::Result<String>
 where
+    K: KnownPath,
     T: Serialize,
     F: FnOnce(protobuf::Any) -> Result<T, E>,
     E: std::error::Error + Send + Sync + 'static,
 {
     let raw_any = ibc_state
-        .get_raw::<protobuf::Any>(key)?
+        .get_raw::<K, protobuf::Any>(key)?
         .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
     let raw = decode_any(raw_any)?;
     Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
@@ -308,7 +280,7 @@ impl ChainStateKind {
                     timestamp,
                 };
                 let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(&consensus_state)?)?;
+                    colored_json::to_colored_json_auto(&serde_json::to_value(consensus_state)?)?;
                 println!("{json_str}");
 
                 Ok(())
@@ -360,7 +332,7 @@ impl ChainStateKind {
                     .collect::<HashMap<_, _>>();
 
                 let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(&ibc_state_map)?)?;
+                    colored_json::to_colored_json_auto(&serde_json::to_value(ibc_state_map)?)?;
                 println!("{json_str}");
 
                 Ok(())

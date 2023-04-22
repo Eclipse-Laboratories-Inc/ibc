@@ -4,6 +4,7 @@ use {
         fmt::{self, Debug},
         mem,
     },
+    eclipse_ibc_known_path::KnownPath,
     eclipse_known_proto::KnownProto,
     ibc_proto::ibc::core::commitment::v1::MerkleRoot,
     ics23::ExistenceProof,
@@ -50,11 +51,12 @@ impl<'a> IbcState<'a> {
         })
     }
 
-    pub fn get<T>(&self, key: &str) -> anyhow::Result<Option<T>>
+    pub fn get<K, T>(&self, key: &K) -> anyhow::Result<Option<T>>
     where
+        K: KnownPath,
         T: KnownProto,
     {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
+        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
         if let Some(owned_value) = self.pending_changes.get(&key_hash) {
             return owned_value
                 .as_ref()
@@ -68,11 +70,12 @@ impl<'a> IbcState<'a> {
             .transpose()
     }
 
-    pub fn get_raw<T>(&self, key: &str) -> anyhow::Result<Option<T>>
+    pub fn get_raw<K, T>(&self, key: &K) -> anyhow::Result<Option<T>>
     where
+        K: KnownPath,
         T: Default + prost::Message,
     {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
+        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
         if let Some(owned_value) = self.pending_changes.get(&key_hash) {
             return Ok(owned_value
                 .as_ref()
@@ -87,23 +90,27 @@ impl<'a> IbcState<'a> {
             .transpose()?)
     }
 
-    #[allow(unused)]
-    pub fn get_proof(&self, key: &str) -> anyhow::Result<ExistenceProof> {
+    pub fn get_proof<K>(&self, key: &K) -> anyhow::Result<ExistenceProof>
+    where
+        K: KnownPath,
+    {
         self.state_jmt
-            .get_with_ics23_proof(key.as_bytes().to_vec(), self.version)
+            .get_with_ics23_proof(key.to_string().as_bytes().to_vec(), self.version)
     }
 
-    pub fn set<T>(&mut self, key: &str, value: T)
+    pub fn set<K, T>(&mut self, key: &K, value: T)
     where
+        K: KnownPath,
         T: KnownProto,
     {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
+        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
         self.pending_changes
             .insert(key_hash, Some(T::encode(value)));
     }
 
-    pub fn update<T, F>(&mut self, key: &str, f: F) -> anyhow::Result<()>
+    pub fn update<K, T, F>(&mut self, key: &K, f: F) -> anyhow::Result<()>
     where
+        K: KnownPath,
         T: Default + KnownProto,
         F: FnOnce(&mut T),
     {
@@ -113,8 +120,11 @@ impl<'a> IbcState<'a> {
         Ok(())
     }
 
-    pub fn remove(&mut self, key: &str) {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key);
+    pub fn remove<K>(&mut self, key: &K)
+    where
+        K: KnownPath,
+    {
+        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
         self.pending_changes.insert(key_hash, None);
     }
 

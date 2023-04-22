@@ -11,6 +11,7 @@ edition = { workspace = true }
 anyhow = { workspace = true }
 bincode = { workspace = true }
 derive_more = { workspace = true }
+eclipse-ibc-known-path = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
 eclipse-known-proto = { workspace = true }

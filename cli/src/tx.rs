@@ -41,7 +41,7 @@ fn parse_as_json<T>(s: &str) -> serde_json::Result<T>
 where
     T: DeserializeOwned,
 {
-    serde_json::from_str(&s)
+    serde_json::from_str(s)
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -124,6 +124,7 @@ impl ClientTx {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug, Subcommand)]
 enum ConnectionTx {
     OpenInit {

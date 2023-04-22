@@ -77,8 +77,7 @@ impl<'a> IbcHandler<'a> {
         slot_hashes: Arc<SlotHashes>,
     ) -> anyhow::Result<Self> {
         let state = IbcState::new(store, clock.slot);
-        let all_module_ids: AllModuleIds =
-            state.get(&AllModulesPath.to_string())?.unwrap_or_default();
+        let all_module_ids: AllModuleIds = state.get(&AllModulesPath)?.unwrap_or_default();
         let module_by_id = all_module_ids
             .modules
             .into_iter()
@@ -119,7 +118,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         client_type_path: ClientTypePath,
         client_type: ClientType,
     ) -> Result<(), ContextError> {
-        self.state.set(&client_type_path.to_string(), client_type);
+        self.state.set(&client_type_path, client_type);
         Ok(())
     }
 
@@ -128,10 +127,8 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         client_state_path: ClientStatePath,
         client_state: Box<dyn ClientState>,
     ) -> Result<(), ContextError> {
-        self.state.set(
-            &client_state_path.to_string(),
-            encode_client_state(client_state)?,
-        );
+        self.state
+            .set(&client_state_path, encode_client_state(client_state)?);
         Ok(())
     }
 
@@ -150,7 +147,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         let consensus_heights_path = ConsensusHeightsPath(client_id.clone());
         self.state
             .update(
-                &consensus_heights_path.to_string(),
+                &consensus_heights_path,
                 |consensus_heights: &mut ConsensusHeights| {
                     consensus_heights.heights.insert(height);
                 },
@@ -160,7 +157,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
             })?;
 
         self.state.set(
-            &consensus_state_path.to_string(),
+            &consensus_state_path,
             encode_consensus_state(consensus_state)?,
         );
         Ok(())
@@ -177,8 +174,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         timestamp: Timestamp,
     ) -> Result<(), ContextError> {
         let client_update_time_path = ClientUpdateTimePath(client_id, height);
-        self.state
-            .set(&client_update_time_path.to_string(), timestamp);
+        self.state.set(&client_update_time_path, timestamp);
         Ok(())
     }
 
@@ -189,8 +185,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         host_height: Height,
     ) -> Result<(), ContextError> {
         let client_update_height_path = ClientUpdateHeightPath(client_id, height);
-        self.state
-            .set(&client_update_height_path.to_string(), host_height);
+        self.state.set(&client_update_height_path, host_height);
         Ok(())
     }
 
@@ -199,7 +194,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         connection_path: &ConnectionPath,
         connection_end: ConnectionEnd,
     ) -> Result<(), ContextError> {
-        self.state.set(&connection_path.to_string(), connection_end);
+        self.state.set(connection_path, connection_end);
         Ok(())
     }
 
@@ -210,7 +205,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
     ) -> Result<(), ContextError> {
         self.state
             .update(
-                &client_connection_path.to_string(),
+                client_connection_path,
                 |client_connections: &mut ClientConnections| {
                     client_connections.connections.insert(connection_id);
                 },
@@ -230,7 +225,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         commitment_path: &CommitmentPath,
         commitment: PacketCommitment,
     ) -> Result<(), ContextError> {
-        self.state.set(&commitment_path.to_string(), commitment);
+        self.state.set(commitment_path, commitment);
         Ok(())
     }
 
@@ -238,7 +233,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         &mut self,
         commitment_path: &CommitmentPath,
     ) -> Result<(), ContextError> {
-        self.state.remove(&commitment_path.to_string());
+        self.state.remove(commitment_path);
         Ok(())
     }
 
@@ -247,7 +242,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         receipt_path: &ReceiptPath,
         receipt: Receipt,
     ) -> Result<(), ContextError> {
-        self.state.set(&receipt_path.to_string(), receipt);
+        self.state.set(receipt_path, receipt);
         Ok(())
     }
 
@@ -256,12 +251,12 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         ack_path: &AckPath,
         ack_commitment: AcknowledgementCommitment,
     ) -> Result<(), ContextError> {
-        self.state.set(&ack_path.to_string(), ack_commitment);
+        self.state.set(ack_path, ack_commitment);
         Ok(())
     }
 
     fn delete_packet_acknowledgement(&mut self, ack_path: &AckPath) -> Result<(), ContextError> {
-        self.state.remove(&ack_path.to_string());
+        self.state.remove(ack_path);
         Ok(())
     }
 
@@ -270,7 +265,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         channel_end_path: &ChannelEndPath,
         channel_end: ChannelEnd,
     ) -> Result<(), ContextError> {
-        self.state.set(&channel_end_path.to_string(), channel_end);
+        self.state.set(channel_end_path, channel_end);
         Ok(())
     }
 
@@ -279,7 +274,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         seq_send_path: &SeqSendPath,
         seq: Sequence,
     ) -> Result<(), ContextError> {
-        self.state.set(&seq_send_path.to_string(), seq);
+        self.state.set(seq_send_path, seq);
         Ok(())
     }
 
@@ -288,7 +283,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         seq_recv_path: &SeqRecvPath,
         seq: Sequence,
     ) -> Result<(), ContextError> {
-        self.state.set(&seq_recv_path.to_string(), seq);
+        self.state.set(seq_recv_path, seq);
         Ok(())
     }
 
@@ -297,7 +292,7 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         seq_ack_path: &SeqAckPath,
         seq: Sequence,
     ) -> Result<(), ContextError> {
-        self.state.set(&seq_ack_path.to_string(), seq);
+        self.state.set(seq_ack_path, seq);
         Ok(())
     }
 
@@ -321,7 +316,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
         let client_state_path = ClientStatePath::new(client_id);
         self.decode_client_state(
             self.state
-                .get(&client_state_path.to_string())
+                .get(&client_state_path)
                 .map_err(|err| ClientError::Other {
                     description: err.to_string(),
                 })?
@@ -351,7 +346,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 
         decode_consensus_state(
             self.state
-                .get(&client_consensus_path.to_string())
+                .get(client_consensus_path)
                 .map_err(|err| ClientError::Other {
                     description: err.to_string(),
                 })?
@@ -371,12 +366,14 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 
         let consensus_heights: Option<ConsensusHeights> = self
             .state
-            .get(&consensus_heights_path.to_string())
+            .get(&consensus_heights_path)
             .map_err(|err| ClientError::Other {
-                description: err.to_string(),
-            })?;
-        let Some(consensus_heights) = consensus_heights else {
-            return Ok(None);
+            description: err.to_string(),
+        })?;
+
+        let consensus_heights = match consensus_heights {
+            None => return Ok(None),
+            Some(consensus_heights) => consensus_heights,
         };
 
         let next_consensus_height = match consensus_heights
@@ -396,7 +393,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 
         Ok(Some(decode_consensus_state(
             self.state
-                .get(&client_consensus_path.to_string())
+                .get(&client_consensus_path)
                 .map_err(|err| ClientError::Other {
                     description: err.to_string(),
                 })?
@@ -416,12 +413,14 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 
         let consensus_heights: Option<ConsensusHeights> = self
             .state
-            .get(&consensus_heights_path.to_string())
+            .get(&consensus_heights_path)
             .map_err(|err| ClientError::Other {
-                description: err.to_string(),
-            })?;
-        let Some(consensus_heights) = consensus_heights else {
-            return Ok(None);
+            description: err.to_string(),
+        })?;
+
+        let consensus_heights = match consensus_heights {
+            None => return Ok(None),
+            Some(consensus_heights) => consensus_heights,
         };
 
         let next_consensus_height = match consensus_heights.heights.range(..*height).next_back() {
@@ -437,7 +436,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 
         Ok(Some(decode_consensus_state(
             self.state
-                .get(&client_consensus_path.to_string())
+                .get(&client_consensus_path)
                 .map_err(|err| ClientError::Other {
                     description: err.to_string(),
                 })?
@@ -474,7 +473,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
         let connection_path = ConnectionPath(connection_id.clone());
         Ok(self
             .state
-            .get(&connection_path.to_string())
+            .get(&connection_path)
             .map_err(|err| ConnectionError::Other {
                 description: err.to_string(),
             })?
@@ -506,7 +505,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     fn channel_end(&self, channel_end_path: &ChannelEndPath) -> Result<ChannelEnd, ContextError> {
         Ok(self
             .state
-            .get(&channel_end_path.to_string())
+            .get(channel_end_path)
             .map_err(|err| ChannelError::Other {
                 description: err.to_string(),
             })?
@@ -525,7 +524,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     ) -> Result<Sequence, ContextError> {
         Ok(self
             .state
-            .get(&seq_send_path.to_string())
+            .get(seq_send_path)
             // TODO: Fix the IBC library to include an error message
             .map_err(|_err| PacketError::ImplementationSpecific)?
             .ok_or_else(|| {
@@ -543,7 +542,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     ) -> Result<Sequence, ContextError> {
         Ok(self
             .state
-            .get(&seq_recv_path.to_string())
+            .get(seq_recv_path)
             // TODO: Fix the IBC library to include an error message
             .map_err(|_err| PacketError::ImplementationSpecific)?
             .ok_or_else(|| {
@@ -558,7 +557,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     fn get_next_sequence_ack(&self, seq_ack_path: &SeqAckPath) -> Result<Sequence, ContextError> {
         Ok(self
             .state
-            .get(&seq_ack_path.to_string())
+            .get(seq_ack_path)
             // TODO: Fix the IBC library to include an error message
             .map_err(|_err| PacketError::ImplementationSpecific)?
             .ok_or_else(|| {
@@ -576,7 +575,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     ) -> Result<PacketCommitment, ContextError> {
         Ok(self
             .state
-            .get(&commitment_path.to_string())
+            .get(commitment_path)
             // TODO: Fix the IBC library to include an error message
             .map_err(|_err| PacketError::ImplementationSpecific)?
             .ok_or_else(|| {
@@ -594,7 +593,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     fn get_packet_receipt(&self, receipt_path: &ReceiptPath) -> Result<Receipt, ContextError> {
         Ok(self
             .state
-            .get(&receipt_path.to_string())
+            .get(receipt_path)
             // TODO: Fix the IBC library to include an error message
             .map_err(|_err| PacketError::ImplementationSpecific)?
             .ok_or_else(|| {
@@ -615,7 +614,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     ) -> Result<AcknowledgementCommitment, ContextError> {
         Ok(self
             .state
-            .get(&ack_path.to_string())
+            .get(ack_path)
             // TODO: Fix the IBC library to include an error message
             .map_err(|_err| PacketError::ImplementationSpecific)?
             .ok_or_else(|| {
@@ -638,7 +637,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
         let client_update_time_path = ClientUpdateTimePath(client_id.clone(), *height);
         Ok(self
             .state
-            .get(&client_update_time_path.to_string())
+            .get(&client_update_time_path)
             .map_err(|err| ChannelError::Other {
                 description: err.to_string(),
             })?
@@ -656,7 +655,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
         let client_update_height_path = ClientUpdateHeightPath(client_id.clone(), *height);
         Ok(self
             .state
-            .get(&client_update_height_path.to_string())
+            .get(&client_update_height_path)
             .map_err(|err| ChannelError::Other {
                 description: err.to_string(),
             })?
@@ -704,7 +703,7 @@ impl<'a> Router for IbcHandler<'a> {
 
     fn lookup_module_by_port(&self, port_id: &PortId) -> Option<ModuleId> {
         let port_path = PortPath(port_id.clone());
-        self.state.get(&port_path.to_string()).ok().flatten()
+        self.state.get(&port_path).ok().flatten()
     }
 }
 
@@ -713,14 +712,11 @@ impl<'a> IbcHandler<'a> {
         let port_path = PortPath(port_id.clone());
         let module_id = module_id_of_pubkey(pubkey);
         if self.lookup_module_by_port(port_id).is_none() {
-            self.state.set(&port_path.to_string(), module_id.clone());
+            self.state.set(&port_path, module_id.clone());
             self.state
-                .update(
-                    &AllModulesPath.to_string(),
-                    |all_module_ids: &mut AllModuleIds| {
-                        all_module_ids.modules.insert(module_id);
-                    },
-                )
+                .update(&AllModulesPath, |all_module_ids: &mut AllModuleIds| {
+                    all_module_ids.modules.insert(module_id);
+                })
                 .map_err(|_err| PortError::ImplementationSpecific)?;
 
             Ok(())
@@ -739,14 +735,11 @@ impl<'a> IbcHandler<'a> {
         match self.lookup_module_by_port(port_id) {
             Some(curr_module_id) => {
                 if module_id == curr_module_id {
-                    self.state.remove(&port_path.to_string());
+                    self.state.remove(&port_path);
                     self.state
-                        .update(
-                            &AllModulesPath.to_string(),
-                            |all_module_ids: &mut AllModuleIds| {
-                                all_module_ids.modules.remove(&module_id);
-                            },
-                        )
+                        .update(&AllModulesPath, |all_module_ids: &mut AllModuleIds| {
+                            all_module_ids.modules.remove(&module_id);
+                        })
                         .map_err(|_err| PortError::ImplementationSpecific)?;
 
                     Ok(())
