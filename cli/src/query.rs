@@ -194,15 +194,14 @@ impl MerkleStateKind {
     }
 }
 
-fn get_json_with_decode<K, T, F, E>(
+fn get_json_with_decode<K, T, E>(
     ibc_state: &IbcState<'_>,
     key: &K,
-    decode: F,
+    decode: impl FnOnce(<K::Value as KnownProto>::Raw) -> Result<T, E>,
 ) -> anyhow::Result<String>
 where
     K: KnownPath,
     T: Serialize,
-    F: FnOnce(<K::Value as KnownProto>::Raw) -> Result<T, E>,
     E: std::error::Error + Send + Sync + 'static,
 {
     let raw = ibc_state

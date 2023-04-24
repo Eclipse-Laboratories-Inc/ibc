@@ -105,11 +105,10 @@ impl<'a> IbcState<'a> {
             .insert(key_hash, Some(KnownProto::encode(value)));
     }
 
-    pub fn update<K, F>(&mut self, key: &K, f: F) -> anyhow::Result<()>
+    pub fn update<K>(&mut self, key: &K, f: impl FnOnce(&mut K::Value)) -> anyhow::Result<()>
     where
         K: KnownPath,
         K::Value: Default,
-        F: FnOnce(&mut K::Value),
     {
         let mut value = self.get(key)?.unwrap_or_default();
         f(&mut value);
