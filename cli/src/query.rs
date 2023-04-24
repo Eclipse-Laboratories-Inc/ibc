@@ -24,11 +24,10 @@ use {
             },
         },
     },
-    ibc_proto::google::protobuf,
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::hash::Hash,
-    std::{collections::HashMap, sync::Arc},
+    std::{collections::HashMap, convert::Infallible, sync::Arc},
     tendermint::time::Time as TendermintTime,
 };
 
@@ -107,12 +106,12 @@ enum MerkleStateKind {
 impl MerkleStateKind {
     fn get_json_str(&self, ibc_state: &IbcState<'_>) -> anyhow::Result<String> {
         match self {
-            Self::ClientState { client_id } => get_json_from_any(
+            Self::ClientState { client_id } => get_json_with_decode(
                 ibc_state,
                 &ClientStatePath::new(client_id),
                 decode_client_state,
             ),
-            Self::ConsensusState { client_id, height } => get_json_from_any(
+            Self::ConsensusState { client_id, height } => get_json_with_decode(
                 ibc_state,
                 &ClientConsensusStatePath::new(client_id, height),
                 decode_consensus_state,
@@ -195,37 +194,32 @@ impl MerkleStateKind {
     }
 }
 
+fn get_json_with_decode<K, T, F, E>(
+    ibc_state: &IbcState<'_>,
+    key: &K,
+    decode: F,
+) -> anyhow::Result<String>
+where
+    K: KnownPath,
+    T: Serialize,
+    F: FnOnce(<K::Value as KnownProto>::Raw) -> Result<T, E>,
+    E: std::error::Error + Send + Sync + 'static,
+{
+    let raw = ibc_state
+        .get_raw(key)?
+        .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
+    let decoded_raw = decode(raw)?;
+    Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
+        &decoded_raw,
+    )?)?)
+}
+
 fn get_json<K>(ibc_state: &IbcState<'_>, key: &K) -> anyhow::Result<String>
 where
     K: KnownPath,
     <K::Value as KnownProto>::Raw: Serialize,
 {
-    let raw = ibc_state
-        .get_raw(key)?
-        .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
-    Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
-        &raw,
-    )?)?)
-}
-
-fn get_json_from_any<K, T, F, E>(
-    ibc_state: &IbcState<'_>,
-    key: &K,
-    decode_any: F,
-) -> anyhow::Result<String>
-where
-    K: KnownPath<Value = protobuf::Any>,
-    T: Serialize,
-    F: FnOnce(protobuf::Any) -> Result<T, E>,
-    E: std::error::Error + Send + Sync + 'static,
-{
-    let raw_any = ibc_state
-        .get_raw(key)?
-        .ok_or_else(|| anyhow!("No value found for key: {key}"))?;
-    let raw = decode_any(raw_any)?;
-    Ok(colored_json::to_colored_json_auto(&serde_json::to_value(
-        &raw,
-    )?)?)
+    get_json_with_decode(ibc_state, key, |raw| Ok::<_, Infallible>(raw))
 }
 
 #[derive(Clone, Debug, Subcommand)]
