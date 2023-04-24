@@ -1,5 +1,5 @@
 [package]
-name = "eclipse-known-proto"
+name = "eclipse-ibc-known-proto"
 description = "Eclipse known Protobuf serializations"
 version = { workspace = true }
 homepage = { workspace = true }

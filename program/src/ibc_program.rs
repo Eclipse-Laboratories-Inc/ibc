@@ -7,8 +7,8 @@ use {
         },
         id,
     },
+    eclipse_ibc_known_proto::KnownProto,
     eclipse_ibc_state::IbcAccountData,
-    eclipse_known_proto::KnownProto,
     ibc::core::handler::dispatch,
     ibc_proto::google::protobuf,
     solana_program_runtime::{

@@ -1,10 +1,10 @@
 use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
+    eclipse_ibc_known_proto::{KnownAnyProto, KnownProto},
     eclipse_ibc_program::ibc_instruction::msgs::{
         MsgBindPort, MsgInitStorageAccount, MsgReleasePort,
     },
-    eclipse_known_proto::{KnownAnyProto, KnownProto},
     ibc::core::ics24_host::identifier::PortId,
     ibc_proto::{
         google::protobuf,

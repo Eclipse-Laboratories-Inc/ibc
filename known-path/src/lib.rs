@@ -1,7 +1,7 @@
 use {
     core::fmt::Display,
     eclipse_ibc_extra_types::ClientConnections,
-    eclipse_known_proto::KnownProto,
+    eclipse_ibc_known_proto::KnownProto,
     ibc::core::{
         ics02_client::client_type::ClientType,
         ics03_connection::connection::ConnectionEnd,

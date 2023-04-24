@@ -9,7 +9,7 @@ edition = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
+eclipse-ibc-known-proto = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
-eclipse-known-proto = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }

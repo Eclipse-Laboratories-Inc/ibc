@@ -15,10 +15,10 @@ clap = { workspace = true }
 colored_json = { workspace = true }
 dirs-next = { workspace = true }
 eclipse-ibc-known-path = { workspace = true }
+eclipse-ibc-known-proto = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-program = { workspace = true }
 eclipse-ibc-state = { workspace = true }
-eclipse-known-proto = { workspace = true }
 hex = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }

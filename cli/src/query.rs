@@ -2,6 +2,7 @@ use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
     eclipse_ibc_known_path::KnownPath,
+    eclipse_ibc_known_proto::KnownProto,
     eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_state::{
         decode_client_state, decode_consensus_state,
@@ -10,7 +11,6 @@ use {
         },
         IbcAccountData, IbcState,
     },
-    eclipse_known_proto::KnownProto,
     ibc::core::{
         ics02_client::height::Height,
         ics04_channel::packet::Sequence,

@@ -5,7 +5,7 @@ use {
         mem,
     },
     eclipse_ibc_known_path::KnownPath,
-    eclipse_known_proto::KnownProto,
+    eclipse_ibc_known_proto::KnownProto,
     ibc_proto::ibc::core::commitment::v1::MerkleRoot,
     ics23::ExistenceProof,
     jmt::{storage::TreeWriter, Sha256Jmt},

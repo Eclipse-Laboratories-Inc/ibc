@@ -1,7 +1,7 @@
 use {
     crate::error::Error,
+    eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     eclipse_ibc_proto::eclipse::ibc::chain::v1::ConsensusState as RawEclipseConsensusState,
-    eclipse_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     ibc::{
         core::{
             ics02_client::{consensus_state::ConsensusState, error::ClientError},

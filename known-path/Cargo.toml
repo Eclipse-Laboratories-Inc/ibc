@@ -9,6 +9,6 @@ edition = { workspace = true }
 
 [dependencies]
 eclipse-ibc-extra-types = { workspace = true }
-eclipse-known-proto = { workspace = true }
+eclipse-ibc-known-proto = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }

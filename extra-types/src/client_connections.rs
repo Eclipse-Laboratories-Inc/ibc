@@ -1,6 +1,6 @@
 use {
+    eclipse_ibc_known_proto::KnownProtoWithFrom,
     eclipse_ibc_proto::eclipse::ibc::client::v1::ClientConnections as RawClientConnections,
-    eclipse_known_proto::KnownProtoWithFrom,
     ibc::core::ics24_host::{error::ValidationError, identifier::ConnectionId},
     std::collections::HashSet,
 };

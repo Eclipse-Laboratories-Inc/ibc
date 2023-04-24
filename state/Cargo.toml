@@ -13,9 +13,9 @@ bincode = { workspace = true }
 derive_more = { workspace = true }
 eclipse-ibc-extra-types = { workspace = true }
 eclipse-ibc-known-path = { workspace = true }
+eclipse-ibc-known-proto = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
-eclipse-known-proto = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }
 ics23 = { workspace = true }

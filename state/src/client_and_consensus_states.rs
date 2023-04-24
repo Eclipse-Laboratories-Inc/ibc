@@ -1,4 +1,5 @@
 use {
+    eclipse_ibc_known_proto::KnownAnyProto,
     eclipse_ibc_light_client::{
         EclipseClientState, EclipseConsensusState, ECLIPSE_CLIENT_STATE_TYPE_URL,
         ECLIPSE_CONSENSUS_STATE_TYPE_URL,
@@ -6,7 +7,6 @@ use {
     eclipse_ibc_proto::eclipse::ibc::chain::v1::{
         ClientState as RawEclipseClientState, ConsensusState as RawEclipseConsensusState,
     },
-    eclipse_known_proto::KnownAnyProto,
     ibc::{
         clients::ics07_tendermint::{
             client_state::{

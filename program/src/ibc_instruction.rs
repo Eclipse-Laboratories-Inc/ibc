@@ -1,5 +1,5 @@
 use {
-    eclipse_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
+    eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     ibc::{
         core::{
             ics02_client::msgs::{
@@ -26,11 +26,11 @@ use {
 pub mod msgs {
     use {
         core::{convert::Infallible, str::FromStr},
+        eclipse_ibc_known_proto::{KnownAnyProto, KnownProtoWithFrom},
         eclipse_ibc_proto::eclipse::ibc::{
             admin::v1::MsgInitStorageAccount as RawMsgInitStorageAccount,
             port::v1::{MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort},
         },
-        eclipse_known_proto::{KnownAnyProto, KnownProtoWithFrom},
         ibc::core::ics24_host::identifier::PortId,
     };
 

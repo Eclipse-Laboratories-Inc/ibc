@@ -29,11 +29,11 @@ derive_more = "0.99.17"
 dirs-next = "2.0.0"
 eclipse-ibc-extra-types = { path = "extra-types" }
 eclipse-ibc-known-path = { path = "known-path" }
+eclipse-ibc-known-proto = { path = "known-proto" }
 eclipse-ibc-light-client = { path = "light-client" }
 eclipse-ibc-program = { path = "program" }
 eclipse-ibc-proto = { path = "proto" }
 eclipse-ibc-state = { path = "state" }
-eclipse-known-proto = { path = "known-proto" }
 hex = "0.4.3"
 ibc = "0.37.0"
 ibc-proto = "0.26.0"

@@ -1364,10 +1364,10 @@ dependencies = [
  "colored_json",
  "dirs-next",
  "eclipse-ibc-known-path",
+ "eclipse-ibc-known-proto",
  "eclipse-ibc-light-client",
  "eclipse-ibc-program",
  "eclipse-ibc-state",
- "eclipse-known-proto",
  "hex",
  "ibc",
  "ibc-proto",
@@ -1386,8 +1386,8 @@ name = "eclipse-ibc-extra-types"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "eclipse-ibc-known-proto",
  "eclipse-ibc-proto",
- "eclipse-known-proto",
  "ibc",
  "ibc-proto",
 ]
@@ -1397,17 +1397,30 @@ name = "eclipse-ibc-known-path"
 version = "0.1.0"
 dependencies = [
  "eclipse-ibc-extra-types",
- "eclipse-known-proto",
+ "eclipse-ibc-known-proto",
  "ibc",
  "ibc-proto",
+]
+
+[[package]]
+name = "eclipse-ibc-known-proto"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "ibc",
+ "ibc-proto",
+ "prost",
+ "tendermint",
+ "tendermint-proto",
 ]
 
 [[package]]
 name = "eclipse-ibc-light-client"
 version = "0.1.0"
 dependencies = [
+ "eclipse-ibc-known-proto",
  "eclipse-ibc-proto",
- "eclipse-known-proto",
  "ibc",
  "ibc-proto",
  "ics23",
@@ -1426,10 +1439,10 @@ dependencies = [
  "anyhow",
  "bincode",
  "eclipse-ibc-extra-types",
+ "eclipse-ibc-known-proto",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
  "eclipse-ibc-state",
- "eclipse-known-proto",
  "hex",
  "ibc",
  "ibc-proto",
@@ -1463,9 +1476,9 @@ dependencies = [
  "derive_more",
  "eclipse-ibc-extra-types",
  "eclipse-ibc-known-path",
+ "eclipse-ibc-known-proto",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",
- "eclipse-known-proto",
  "ibc",
  "ibc-proto",
  "ics23",
@@ -1475,19 +1488,6 @@ dependencies = [
  "sha2 0.10.6",
  "solana-program-runtime",
  "solana-sdk",
-]
-
-[[package]]
-name = "eclipse-known-proto"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "ibc",
- "ibc-proto",
- "prost",
- "tendermint",
- "tendermint-proto",
 ]
 
 [[package]]

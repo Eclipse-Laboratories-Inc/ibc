@@ -1,6 +1,6 @@
 use {
+    eclipse_ibc_known_proto::KnownProtoWithFrom,
     eclipse_ibc_proto::eclipse::ibc::client::v1::ConsensusHeights as RawConsensusHeights,
-    eclipse_known_proto::KnownProtoWithFrom,
     ibc::core::ics02_client::{error::ClientError, height::Height},
     ibc_proto::ibc::core::client::v1::Height as RawHeight,
     std::collections::BTreeSet,
