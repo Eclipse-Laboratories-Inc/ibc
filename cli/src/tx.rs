@@ -9,6 +9,14 @@ use {
     ibc_proto::{
         google::protobuf,
         ibc::core::{
+            channel::v1::{
+                MsgChannelCloseConfirm as RawMsgChannelCloseConfirm,
+                MsgChannelCloseInit as RawMsgChannelCloseInit,
+                MsgChannelOpenAck as RawMsgChannelOpenAck,
+                MsgChannelOpenConfirm as RawMsgChannelOpenConfirm,
+                MsgChannelOpenInit as RawMsgChannelOpenInit,
+                MsgChannelOpenTry as RawMsgChannelOpenTry,
+            },
             client::v1::{
                 MsgCreateClient as RawMsgCreateClient,
                 MsgSubmitMisbehaviour as RawMsgSubmitMisbehaviour,
@@ -53,6 +61,101 @@ impl AdminTx {
     fn encode_as_any(&self) -> protobuf::Any {
         match self {
             Self::InitStorageAccount => MsgInitStorageAccount.encode_as_any(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum ChannelTx {
+    OpenInit {
+        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenInit>)]
+        msg: RawMsgChannelOpenInit,
+    },
+    OpenTry {
+        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenTry>)]
+        msg: RawMsgChannelOpenTry,
+    },
+    OpenAck {
+        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenAck>)]
+        msg: RawMsgChannelOpenAck,
+    },
+    OpenConfirm {
+        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenConfirm>)]
+        msg: RawMsgChannelOpenConfirm,
+    },
+    CloseInit {
+        #[arg(value_parser = parse_as_json::<RawMsgChannelCloseInit>)]
+        msg: RawMsgChannelCloseInit,
+    },
+    CloseConfirm {
+        #[arg(value_parser = parse_as_json::<RawMsgChannelCloseConfirm>)]
+        msg: RawMsgChannelCloseConfirm,
+    },
+}
+
+impl ChannelTx {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
+        match self {
+            Self::OpenInit { msg } => {
+                let msg = RawMsgChannelOpenInit {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.channel.v1.MsgChannelOpenInit".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::OpenTry { msg } => {
+                let msg = RawMsgChannelOpenTry {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.channel.v1.MsgChannelOpenTry".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::OpenAck { msg } => {
+                let msg = RawMsgChannelOpenAck {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.channel.v1.MsgChannelOpenAck".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::OpenConfirm { msg } => {
+                let msg = RawMsgChannelOpenConfirm {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.channel.v1.MsgChannelOpenConfirm".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::CloseInit { msg } => {
+                let msg = RawMsgChannelCloseInit {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.channel.v1.MsgChannelCloseInit".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
+            Self::CloseConfirm { msg } => {
+                let msg = RawMsgChannelCloseConfirm {
+                    signer: signer.to_string(),
+                    ..msg.clone()
+                };
+                protobuf::Any {
+                    type_url: "/ibc.core.channel.v1.MsgChannelCloseConfirm".to_owned(),
+                    value: msg.encode_to_vec(),
+                }
+            }
         }
     }
 }
@@ -218,6 +321,8 @@ enum TxKind {
     #[command(subcommand)]
     Admin(AdminTx),
     #[command(subcommand)]
+    Channel(ChannelTx),
+    #[command(subcommand)]
     Client(ClientTx),
     #[command(subcommand)]
     Connection(ConnectionTx),
@@ -229,6 +334,7 @@ impl TxKind {
     fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
         match self {
             Self::Admin(tx) => tx.encode_as_any(),
+            Self::Channel(tx) => tx.encode_as_any(signer),
             Self::Client(tx) => tx.encode_as_any(signer),
             Self::Connection(tx) => tx.encode_as_any(signer),
             Self::Port(tx) => tx.encode_as_any(),
@@ -251,7 +357,7 @@ impl TxKind {
                 AccountMeta::new_readonly(rent::id(), false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
-            Self::Client(_) | Self::Connection(_) | Self::Port(_) => {
+            Self::Channel(_) | Self::Client(_) | Self::Connection(_) | Self::Port(_) => {
                 vec![
                     AccountMeta::new_readonly(payer_key, true),
                     AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
