@@ -815,12 +815,9 @@ impl Module for SolanaModule {
             description: "Return data missing".to_owned(),
         })?;
 
-        let version = bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
+        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
             description: err.to_string(),
-        })?;
-
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        Ok((ModuleExtras::empty(), version))
+        })
     }
 
     fn on_chan_open_try_validate(
@@ -886,12 +883,9 @@ impl Module for SolanaModule {
             description: "Return data missing".to_owned(),
         })?;
 
-        let version = bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
+        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
             description: err.to_string(),
-        })?;
-
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        Ok((ModuleExtras::empty(), version))
+        })
     }
 
     fn on_chan_open_ack_validate(
@@ -935,8 +929,13 @@ impl Module for SolanaModule {
             description: err.to_string(),
         })?;
 
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        Ok(ModuleExtras::empty())
+        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
+            description: "Return data missing".to_owned(),
+        })?;
+
+        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
+            description: err.to_string(),
+        })
     }
 
     fn on_chan_open_confirm_validate(
@@ -976,8 +975,13 @@ impl Module for SolanaModule {
             description: err.to_string(),
         })?;
 
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        Ok(ModuleExtras::empty())
+        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
+            description: "Return data missing".to_owned(),
+        })?;
+
+        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
+            description: err.to_string(),
+        })
     }
 
     fn on_chan_close_init_validate(
@@ -1017,8 +1021,13 @@ impl Module for SolanaModule {
             description: err.to_string(),
         })?;
 
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        Ok(ModuleExtras::empty())
+        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
+            description: "Return data missing".to_owned(),
+        })?;
+
+        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
+            description: err.to_string(),
+        })
     }
 
     fn on_chan_close_confirm_validate(
@@ -1058,8 +1067,13 @@ impl Module for SolanaModule {
             description: err.to_string(),
         })?;
 
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        Ok(ModuleExtras::empty())
+        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
+            description: "Return data missing".to_owned(),
+        })?;
+
+        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
+            description: err.to_string(),
+        })
     }
 
     fn on_recv_packet_execute(
@@ -1079,10 +1093,8 @@ impl Module for SolanaModule {
         invoke(&instruction, &[]).unwrap();
 
         let (_, return_data) = get_return_data().expect("Return data missing");
-        let acknowledgement = bincode::deserialize(&return_data).unwrap();
 
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        (ModuleExtras::empty(), acknowledgement)
+        bincode::deserialize(&return_data).unwrap()
     }
 
     fn on_acknowledgement_packet_validate(
