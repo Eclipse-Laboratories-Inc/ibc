@@ -6,12 +6,11 @@ use {
     ibc::core::{
         context::{ContextError, ExecutionContext, ValidationContext},
         ics02_client::{
-            client_state::{ClientState, UpdatedState},
+            client_state::{ClientState, UpdateKind, UpdatedState},
             client_type::ClientType,
             consensus_state::ConsensusState,
             error::ClientError,
             height::Height,
-            msgs::update_client::UpdateKind,
         },
         ics23_commitment::{
             commitment::{CommitmentPrefix, CommitmentProofBytes, CommitmentRoot},
@@ -240,7 +239,6 @@ impl ClientState for EclipseClientState {
         ctx: &mut dyn ExecutionContext,
         client_id: &ClientId,
         client_message: protobuf::Any,
-        _update_kind: &UpdateKind,
     ) -> Result<Vec<Height>, ClientError> {
         let header = EclipseHeader::try_from(client_message)?;
         let new_height = header.height;

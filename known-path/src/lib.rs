@@ -3,7 +3,6 @@ use {
     eclipse_ibc_extra_types::ClientConnections,
     eclipse_ibc_known_proto::KnownProto,
     ibc::core::{
-        ics02_client::client_type::ClientType,
         ics03_connection::connection::ConnectionEnd,
         ics04_channel::{
             channel::ChannelEnd,
@@ -12,8 +11,8 @@ use {
         },
         ics24_host::path::{
             AckPath, ChannelEndPath, ClientConnectionPath, ClientConsensusStatePath,
-            ClientStatePath, ClientTypePath, CommitmentPath, ConnectionPath, PortPath, ReceiptPath,
-            SeqAckPath, SeqRecvPath, SeqSendPath,
+            ClientStatePath, CommitmentPath, ConnectionPath, PortPath, ReceiptPath, SeqAckPath,
+            SeqRecvPath, SeqSendPath,
         },
         ics26_routing::context::ModuleId,
     },
@@ -44,10 +43,6 @@ impl KnownPath for ClientConsensusStatePath {
 
 impl KnownPath for ClientStatePath {
     type Value = protobuf::Any;
-}
-
-impl KnownPath for ClientTypePath {
-    type Value = ClientType;
 }
 
 impl KnownPath for CommitmentPath {

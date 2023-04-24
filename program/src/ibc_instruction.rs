@@ -2,24 +2,14 @@ use {
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     ibc::{
         core::{
-            ics02_client::msgs::{
-                update_client::{self, UpdateKind},
-                ClientMsg,
-            },
+            ics02_client::msgs::ClientMsg,
             ics03_connection::msgs::ConnectionMsg,
             ics04_channel::msgs::{ChannelMsg, PacketMsg},
             ics26_routing::{error::RouterError, msgs::MsgEnvelope},
         },
         tx_msg::Msg as _,
     },
-    ibc_proto::{
-        google::protobuf,
-        ibc::core::client::v1::{
-            MsgSubmitMisbehaviour as RawMsgSubmitMisbehaviour,
-            MsgUpdateClient as RawMsgUpdateClient,
-        },
-        protobuf::Protobuf,
-    },
+    ibc_proto::google::protobuf,
     thiserror::Error,
 };
 
@@ -279,22 +269,8 @@ impl From<IbcInstruction> for protobuf::Any {
                 match msg_envelope {
                     // ICS2 messages
                     MsgEnvelope::Client(ClientMsg::CreateClient(domain_msg)) => domain_msg.to_any(),
-                    MsgEnvelope::Client(ClientMsg::UpdateClient(domain_msg)) => {
-                        match domain_msg.update_kind {
-                            UpdateKind::UpdateClient => protobuf::Any {
-                                type_url: update_client::UPDATE_CLIENT_TYPE_URL.to_owned(),
-                                value: Protobuf::<RawMsgUpdateClient>::encode_vec(&domain_msg)
-                                    .unwrap(),
-                            },
-                            UpdateKind::SubmitMisbehaviour => protobuf::Any {
-                                type_url: update_client::MISBEHAVIOUR_TYPE_URL.to_owned(),
-                                value: Protobuf::<RawMsgSubmitMisbehaviour>::encode_vec(
-                                    &domain_msg,
-                                )
-                                .unwrap(),
-                            },
-                        }
-                    }
+                    MsgEnvelope::Client(ClientMsg::UpdateClient(domain_msg)) => domain_msg.to_any(),
+                    MsgEnvelope::Client(ClientMsg::Misbehaviour(domain_msg)) => domain_msg.to_any(),
                     MsgEnvelope::Client(ClientMsg::UpgradeClient(domain_msg)) => {
                         domain_msg.to_any()
                     }

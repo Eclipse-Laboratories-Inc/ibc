@@ -15,8 +15,8 @@ use {
         core::{
             context::{ContextError, ExecutionContext, Router, ValidationContext},
             ics02_client::{
-                client_state::ClientState, client_type::ClientType,
-                consensus_state::ConsensusState, error::ClientError, height::Height,
+                client_state::ClientState, consensus_state::ConsensusState, error::ClientError,
+                height::Height,
             },
             ics03_connection::{connection::ConnectionEnd, error::ConnectionError},
             ics04_channel::{
@@ -34,8 +34,8 @@ use {
                 identifier::{ChannelId, ClientId, ConnectionId, PortId},
                 path::{
                     AckPath, ChannelEndPath, ClientConnectionPath, ClientConsensusStatePath,
-                    ClientStatePath, ClientTypePath, CommitmentPath, ConnectionPath, PortPath,
-                    ReceiptPath, SeqAckPath, SeqRecvPath, SeqSendPath,
+                    ClientStatePath, CommitmentPath, ConnectionPath, PortPath, ReceiptPath,
+                    SeqAckPath, SeqRecvPath, SeqSendPath,
                 },
             },
             ics26_routing::context::{Module, ModuleId},
@@ -114,15 +114,6 @@ impl<'a> IbcHandler<'a> {
 }
 
 impl<'a> ExecutionContext for IbcHandler<'a> {
-    fn store_client_type(
-        &mut self,
-        client_type_path: ClientTypePath,
-        client_type: ClientType,
-    ) -> Result<(), ContextError> {
-        self.state.set(&client_type_path, client_type);
-        Ok(())
-    }
-
     fn store_client_state(
         &mut self,
         client_state_path: ClientStatePath,
