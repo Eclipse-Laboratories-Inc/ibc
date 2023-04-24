@@ -27,7 +27,7 @@ use {
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::hash::Hash,
-    std::{collections::HashMap, convert::Infallible, sync::Arc},
+    std::{collections::HashMap, sync::Arc},
     tendermint::time::Time as TendermintTime,
 };
 
@@ -202,7 +202,7 @@ fn get_json_with_decode<K, T, E>(
 where
     K: KnownPath,
     T: Serialize,
-    E: std::error::Error + Send + Sync + 'static,
+    anyhow::Error: From<E>,
 {
     let raw = ibc_state
         .get_raw(key)?
@@ -218,7 +218,7 @@ where
     K: KnownPath,
     <K::Value as KnownProto>::Raw: Serialize,
 {
-    get_json_with_decode(ibc_state, key, |raw| Ok::<_, Infallible>(raw))
+    get_json_with_decode(ibc_state, key, anyhow::Ok)
 }
 
 #[derive(Clone, Debug, Subcommand)]
