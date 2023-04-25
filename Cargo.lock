@@ -1438,7 +1438,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
- "eclipse-ibc-extra-types",
  "eclipse-ibc-known-proto",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",

@@ -2,7 +2,6 @@ use {
     crate::module_instruction::*,
     anyhow::anyhow,
     core::ops::Bound::{Excluded, Unbounded},
-    eclipse_ibc_extra_types::{AllModuleIds, ClientConnections, ConsensusHeights},
     eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_state::{
         decode_client_state, decode_consensus_state, encode_client_state, encode_consensus_state,
@@ -78,7 +77,7 @@ impl<'a> IbcHandler<'a> {
         slot_hashes: Arc<SlotHashes>,
     ) -> anyhow::Result<Self> {
         let state = IbcState::new(store, clock.slot);
-        let all_module_ids: AllModuleIds = state.get(&AllModulesPath)?.unwrap_or_default();
+        let all_module_ids = state.get(&AllModulesPath)?.unwrap_or_default();
         let module_by_id = all_module_ids
             .modules
             .into_iter()
@@ -138,12 +137,9 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
 
         let consensus_heights_path = ConsensusHeightsPath(client_id.clone());
         self.state
-            .update(
-                &consensus_heights_path,
-                |consensus_heights: &mut ConsensusHeights| {
-                    consensus_heights.heights.insert(height);
-                },
-            )
+            .update(&consensus_heights_path, |consensus_heights| {
+                consensus_heights.heights.insert(height);
+            })
             .map_err(|err| ClientError::Other {
                 description: err.to_string(),
             })?;
@@ -196,12 +192,9 @@ impl<'a> ExecutionContext for IbcHandler<'a> {
         connection_id: ConnectionId,
     ) -> Result<(), ContextError> {
         self.state
-            .update(
-                client_connection_path,
-                |client_connections: &mut ClientConnections| {
-                    client_connections.connections.insert(connection_id);
-                },
-            )
+            .update(client_connection_path, |client_connections| {
+                client_connections.connections.insert(connection_id);
+            })
             .map_err(|err| ConnectionError::Other {
                 description: err.to_string(),
             })?;
@@ -356,12 +349,12 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     ) -> Result<Option<Box<dyn ConsensusState>>, ContextError> {
         let consensus_heights_path = ConsensusHeightsPath(client_id.clone());
 
-        let consensus_heights: Option<ConsensusHeights> = self
-            .state
-            .get(&consensus_heights_path)
-            .map_err(|err| ClientError::Other {
-            description: err.to_string(),
-        })?;
+        let consensus_heights =
+            self.state
+                .get(&consensus_heights_path)
+                .map_err(|err| ClientError::Other {
+                    description: err.to_string(),
+                })?;
 
         let consensus_heights = match consensus_heights {
             None => return Ok(None),
@@ -403,12 +396,12 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     ) -> Result<Option<Box<dyn ConsensusState>>, ContextError> {
         let consensus_heights_path = ConsensusHeightsPath(client_id.clone());
 
-        let consensus_heights: Option<ConsensusHeights> = self
-            .state
-            .get(&consensus_heights_path)
-            .map_err(|err| ClientError::Other {
-            description: err.to_string(),
-        })?;
+        let consensus_heights =
+            self.state
+                .get(&consensus_heights_path)
+                .map_err(|err| ClientError::Other {
+                    description: err.to_string(),
+                })?;
 
         let consensus_heights = match consensus_heights {
             None => return Ok(None),
@@ -706,7 +699,7 @@ impl<'a> IbcHandler<'a> {
         if self.lookup_module_by_port(port_id).is_none() {
             self.state.set(&port_path, module_id.clone());
             self.state
-                .update(&AllModulesPath, |all_module_ids: &mut AllModuleIds| {
+                .update(&AllModulesPath, |all_module_ids| {
                     all_module_ids.modules.insert(module_id);
                 })
                 .map_err(|_err| PortError::ImplementationSpecific)?;
@@ -729,7 +722,7 @@ impl<'a> IbcHandler<'a> {
                 if module_id == curr_module_id {
                     self.state.remove(&port_path);
                     self.state
-                        .update(&AllModulesPath, |all_module_ids: &mut AllModuleIds| {
+                        .update(&AllModulesPath, |all_module_ids| {
                             all_module_ids.modules.remove(&module_id);
                         })
                         .map_err(|_err| PortError::ImplementationSpecific)?;
