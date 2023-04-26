@@ -30,7 +30,6 @@ use {
             },
         },
     },
-    prost::Message as _,
     serde::de::DeserializeOwned,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::{
@@ -42,15 +41,11 @@ use {
         sysvar::{clock, rent, slot_hashes},
         transaction::Transaction,
     },
-    std::path::PathBuf,
+    std::{
+        io::{self, BufReader},
+        path::PathBuf,
+    },
 };
-
-fn parse_as_json<T>(s: &str) -> serde_json::Result<T>
-where
-    T: DeserializeOwned,
-{
-    serde_json::from_str(s)
-}
 
 #[derive(Clone, Debug, Subcommand)]
 enum AdminTx {
@@ -65,164 +60,110 @@ impl AdminTx {
     }
 }
 
+fn stdin_json_to_any<T>(
+    type_url: &str,
+    modify_msg: impl FnOnce(&mut T),
+) -> anyhow::Result<protobuf::Any>
+where
+    T: DeserializeOwned + prost::Message,
+{
+    let mut msg = serde_json::from_reader(BufReader::new(io::stdin()))?;
+    modify_msg(&mut msg);
+
+    Ok(protobuf::Any {
+        type_url: type_url.to_owned(),
+        value: msg.encode_to_vec(),
+    })
+}
+
 #[derive(Clone, Debug, Subcommand)]
 enum ChannelTx {
-    OpenInit {
-        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenInit>)]
-        msg: RawMsgChannelOpenInit,
-    },
-    OpenTry {
-        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenTry>)]
-        msg: RawMsgChannelOpenTry,
-    },
-    OpenAck {
-        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenAck>)]
-        msg: RawMsgChannelOpenAck,
-    },
-    OpenConfirm {
-        #[arg(value_parser = parse_as_json::<RawMsgChannelOpenConfirm>)]
-        msg: RawMsgChannelOpenConfirm,
-    },
-    CloseInit {
-        #[arg(value_parser = parse_as_json::<RawMsgChannelCloseInit>)]
-        msg: RawMsgChannelCloseInit,
-    },
-    CloseConfirm {
-        #[arg(value_parser = parse_as_json::<RawMsgChannelCloseConfirm>)]
-        msg: RawMsgChannelCloseConfirm,
-    },
+    OpenInit,
+    OpenTry,
+    OpenAck,
+    OpenConfirm,
+    CloseInit,
+    CloseConfirm,
 }
 
 impl ChannelTx {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
-            Self::OpenInit { msg } => {
-                let msg = RawMsgChannelOpenInit {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.channel.v1.MsgChannelOpenInit".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::OpenTry { msg } => {
-                let msg = RawMsgChannelOpenTry {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.channel.v1.MsgChannelOpenTry".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::OpenAck { msg } => {
-                let msg = RawMsgChannelOpenAck {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.channel.v1.MsgChannelOpenAck".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::OpenConfirm { msg } => {
-                let msg = RawMsgChannelOpenConfirm {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.channel.v1.MsgChannelOpenConfirm".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::CloseInit { msg } => {
-                let msg = RawMsgChannelCloseInit {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.channel.v1.MsgChannelCloseInit".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::CloseConfirm { msg } => {
-                let msg = RawMsgChannelCloseConfirm {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.channel.v1.MsgChannelCloseConfirm".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
+            Self::OpenInit => stdin_json_to_any::<RawMsgChannelOpenInit>(
+                "/ibc.core.channel.v1.MsgChannelOpenInit",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::OpenTry => stdin_json_to_any::<RawMsgChannelOpenTry>(
+                "/ibc.core.channel.v1.MsgChannelOpenTry",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::OpenAck => stdin_json_to_any::<RawMsgChannelOpenAck>(
+                "/ibc.core.channel.v1.MsgChannelOpenAck",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::OpenConfirm => stdin_json_to_any::<RawMsgChannelOpenConfirm>(
+                "/ibc.core.channel.v1.MsgChannelOpenConfirm",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::CloseInit => stdin_json_to_any::<RawMsgChannelCloseInit>(
+                "/ibc.core.channel.v1.MsgChannelCloseInit",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::CloseConfirm => stdin_json_to_any::<RawMsgChannelCloseConfirm>(
+                "/ibc.core.channel.v1.MsgChannelCloseConfirm",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
         }
     }
 }
 
 #[derive(Clone, Debug, Subcommand)]
 enum ClientTx {
-    Create {
-        #[arg(value_parser = parse_as_json::<RawMsgCreateClient>)]
-        msg: RawMsgCreateClient,
-    },
-    Update {
-        #[arg(value_parser = parse_as_json::<RawMsgUpdateClient>)]
-        msg: RawMsgUpdateClient,
-    },
-    Misbehaviour {
-        #[arg(value_parser = parse_as_json::<RawMsgSubmitMisbehaviour>)]
-        msg: RawMsgSubmitMisbehaviour,
-    },
-    Upgrade {
-        #[arg(value_parser = parse_as_json::<RawMsgUpgradeClient>)]
-        msg: RawMsgUpgradeClient,
-    },
+    Create,
+    Update,
+    Misbehaviour,
+    Upgrade,
 }
 
 impl ClientTx {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
-            Self::Create { msg } => {
-                let msg = RawMsgCreateClient {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.client.v1.MsgCreateClient".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::Update { msg } => {
-                let msg = RawMsgUpdateClient {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.client.v1.MsgUpdateClient".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::Misbehaviour { msg } => {
-                let msg = RawMsgSubmitMisbehaviour {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.client.v1.MsgSubmitMisbehaviour".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::Upgrade { msg } => {
-                let msg = RawMsgUpgradeClient {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.client.v1.MsgUpgradeClient".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
+            Self::Create => stdin_json_to_any::<RawMsgCreateClient>(
+                "/ibc.core.client.v1.MsgCreateClient",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::Update => stdin_json_to_any::<RawMsgUpdateClient>(
+                "/ibc.core.client.v1.MsgUpdateClient",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::Misbehaviour => stdin_json_to_any::<RawMsgSubmitMisbehaviour>(
+                "/ibc.core.client.v1.MsgSubmitMisbehaviour",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::Upgrade => stdin_json_to_any::<RawMsgUpgradeClient>(
+                "/ibc.core.client.v1.MsgUpgradeClient",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
         }
     }
 }
@@ -230,67 +171,39 @@ impl ClientTx {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug, Subcommand)]
 enum ConnectionTx {
-    OpenInit {
-        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenInit>)]
-        msg: RawMsgConnectionOpenInit,
-    },
-    OpenTry {
-        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenTry>)]
-        msg: RawMsgConnectionOpenTry,
-    },
-    OpenAck {
-        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenAck>)]
-        msg: RawMsgConnectionOpenAck,
-    },
-    OpenConfirm {
-        #[arg(value_parser = parse_as_json::<RawMsgConnectionOpenConfirm>)]
-        msg: RawMsgConnectionOpenConfirm,
-    },
+    OpenInit,
+    OpenTry,
+    OpenAck,
+    OpenConfirm,
 }
 
 impl ConnectionTx {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
-            Self::OpenInit { msg } => {
-                let msg = RawMsgConnectionOpenInit {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenInit".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::OpenTry { msg } => {
-                let msg = RawMsgConnectionOpenTry {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenTry".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::OpenAck { msg } => {
-                let msg = RawMsgConnectionOpenAck {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenAck".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
-            Self::OpenConfirm { msg } => {
-                let msg = RawMsgConnectionOpenConfirm {
-                    signer: signer.to_string(),
-                    ..msg.clone()
-                };
-                protobuf::Any {
-                    type_url: "/ibc.core.connection.v1.MsgConnectionOpenConfirm".to_owned(),
-                    value: msg.encode_to_vec(),
-                }
-            }
+            Self::OpenInit => stdin_json_to_any::<RawMsgConnectionOpenInit>(
+                "/ibc.core.connection.v1.MsgConnectionOpenInit",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::OpenTry => stdin_json_to_any::<RawMsgConnectionOpenTry>(
+                "/ibc.core.connection.v1.MsgConnectionOpenTry",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::OpenAck => stdin_json_to_any::<RawMsgConnectionOpenAck>(
+                "/ibc.core.connection.v1.MsgConnectionOpenAck",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
+            Self::OpenConfirm => stdin_json_to_any::<RawMsgConnectionOpenConfirm>(
+                "/ibc.core.connection.v1.MsgConnectionOpenConfirm",
+                |msg| {
+                    msg.signer = signer.to_string();
+                },
+            ),
         }
     }
 }
@@ -331,22 +244,22 @@ enum TxKind {
 }
 
 impl TxKind {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> protobuf::Any {
+    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
-            Self::Admin(tx) => tx.encode_as_any(),
+            Self::Admin(tx) => Ok(tx.encode_as_any()),
             Self::Channel(tx) => tx.encode_as_any(signer),
             Self::Client(tx) => tx.encode_as_any(signer),
             Self::Connection(tx) => tx.encode_as_any(signer),
-            Self::Port(tx) => tx.encode_as_any(),
+            Self::Port(tx) => Ok(tx.encode_as_any()),
         }
     }
 
-    fn instruction_data(&self, payer_key: Pubkey) -> Vec<u8> {
+    fn instruction_data(&self, payer_key: Pubkey) -> anyhow::Result<Vec<u8>> {
         let signer = payer_key
             .to_string()
             .parse()
             .expect("Pubkey should never be empty");
-        self.encode_as_any(signer).encode()
+        Ok(self.encode_as_any(signer)?.encode())
     }
 
     fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {
@@ -406,7 +319,7 @@ pub(crate) async fn run(
 
     let instruction = Instruction::new_with_bytes(
         eclipse_ibc_program::id(),
-        &kind.instruction_data(payer.pubkey()),
+        &kind.instruction_data(payer.pubkey())?,
         kind.accounts(payer.pubkey()),
     );
 
