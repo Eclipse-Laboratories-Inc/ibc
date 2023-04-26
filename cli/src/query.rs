@@ -1,9 +1,10 @@
 use {
+    crate::chain_state,
     anyhow::anyhow,
     clap::{Parser, Subcommand},
     eclipse_ibc_known_path::KnownPath,
     eclipse_ibc_known_proto::KnownProto,
-    eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
+    eclipse_ibc_light_client::eclipse_chain,
     eclipse_ibc_state::{
         decode_client_state, decode_consensus_state,
         internal_path::{
@@ -30,7 +31,6 @@ use {
         io::{self, Write as _},
         sync::Arc,
     },
-    tendermint::time::Time as TendermintTime,
 };
 
 fn print_json<T>(msg: T) -> anyhow::Result<()>
@@ -251,34 +251,7 @@ impl ChainStateKind {
                 Ok(())
             }
             Self::HostConsensusState { height } => {
-                let slot = eclipse_chain::slot_of_height(height)?;
-                let block = rpc_client.get_block(slot).await?;
-
-                let raw_account_data = rpc_client
-                    .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
-                    .await?;
-
-                let IbcAccountData {
-                    store: ibc_store, ..
-                } = bincode::deserialize(&raw_account_data)?;
-
-                let ibc_state = IbcState::new(&ibc_store, slot);
-                let commitment_root = ibc_state
-                    .get_root_option(slot)?
-                    .ok_or_else(|| anyhow!("No commitment root found for slot {slot}"))?;
-
-                let timestamp = TendermintTime::from_unix_timestamp(
-                    block
-                        .block_time
-                        .ok_or_else(|| anyhow!("Block timestamp should not be missing"))?,
-                    0,
-                )
-                .expect("Block time should be valid");
-                let consensus_state = EclipseConsensusState {
-                    commitment_root,
-                    timestamp,
-                };
-
+                let consensus_state = chain_state::get_consensus_state(rpc_client, height).await?;
                 print_json(consensus_state)?;
                 Ok(())
             }

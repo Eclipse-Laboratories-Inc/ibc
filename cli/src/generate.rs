@@ -1,6 +1,9 @@
 use {
+    crate::chain_state,
     anyhow::anyhow,
     clap::{Parser, Subcommand},
+    eclipse_ibc_known_proto::KnownAnyProto,
+    eclipse_ibc_light_client::eclipse_chain,
     eclipse_ibc_state::{IbcAccountData, IbcState, IbcStore},
     ibc::core::ics24_host::path::{ClientStatePath, ConnectionPath},
     ibc_proto::ibc::core::{
@@ -54,18 +57,36 @@ where
 
 #[derive(Clone, Debug, Subcommand)]
 enum ClientMsg {
-    Create,
-    Update { client_id: String },
-    Upgrade { client_id: String },
+    Create {
+        chain_name: String,
+    },
+    Update {
+        client_id: String,
+    },
+    Upgrade {
+        chain_name: String,
+        client_id: String,
+    },
 }
 
 impl ClientMsg {
-    async fn generate(&self, _rpc_client: &RpcClient) -> anyhow::Result<()> {
+    async fn generate(&self, rpc_client: &RpcClient) -> anyhow::Result<()> {
         match self {
-            Self::Create => {
+            Self::Create { chain_name } => {
+                let latest_slot = rpc_client.get_slot().await?;
+                let latest_height = eclipse_chain::height_of_slot(latest_slot)?;
+                let consensus_state =
+                    chain_state::get_consensus_state(rpc_client, latest_height).await?;
+
+                let latest_header = chain_state::header_from_consensus_state(
+                    consensus_state.clone(),
+                    latest_height,
+                );
+                let client_state = chain_state::client_state_from_header(latest_header, chain_name);
+
                 let msg = RawMsgCreateClient {
-                    client_state: None,
-                    consensus_state: None,
+                    client_state: Some(client_state.encode_as_any()),
+                    consensus_state: Some(consensus_state.encode_as_any()),
                     signer: "".to_owned(),
                 };
 
@@ -73,20 +94,41 @@ impl ClientMsg {
                 Ok(())
             }
             Self::Update { client_id } => {
+                let latest_slot = rpc_client.get_slot().await?;
+                let latest_height = eclipse_chain::height_of_slot(latest_slot)?;
+                let consensus_state =
+                    chain_state::get_consensus_state(rpc_client, latest_height).await?;
+                let latest_header =
+                    chain_state::header_from_consensus_state(consensus_state, latest_height);
+
                 let msg = RawMsgUpdateClient {
                     client_id: client_id.clone(),
-                    header: None,
+                    header: Some(latest_header.encode_as_any()),
                     signer: "".to_owned(),
                 };
 
                 print_json(msg)?;
                 Ok(())
             }
-            Self::Upgrade { client_id } => {
+            Self::Upgrade {
+                chain_name,
+                client_id,
+            } => {
+                let latest_slot = rpc_client.get_slot().await?;
+                let latest_height = eclipse_chain::height_of_slot(latest_slot)?;
+                let consensus_state =
+                    chain_state::get_consensus_state(rpc_client, latest_height).await?;
+
+                let latest_header = chain_state::header_from_consensus_state(
+                    consensus_state.clone(),
+                    latest_height,
+                );
+                let client_state = chain_state::client_state_from_header(latest_header, chain_name);
+
                 let msg = RawMsgUpgradeClient {
                     client_id: client_id.clone(),
-                    client_state: None,
-                    consensus_state: None,
+                    client_state: Some(client_state.encode_as_any()),
+                    consensus_state: Some(consensus_state.encode_as_any()),
                     proof_upgrade_client: vec![],
                     proof_upgrade_consensus_state: vec![],
                     signer: "".to_owned(),

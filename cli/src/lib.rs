@@ -1,3 +1,4 @@
+mod chain_state;
 mod cli;
 mod generate;
 mod query;
