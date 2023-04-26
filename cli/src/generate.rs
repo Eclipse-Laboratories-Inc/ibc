@@ -10,8 +10,6 @@ use {
         MsgConnectionOpenTry as RawMsgConnectionOpenTry,
     },
     solana_client::nonblocking::rpc_client::RpcClient,
-    solana_sdk::signer::{keypair::read_keypair_file, Signer as _},
-    std::path::PathBuf,
 };
 
 const DELAY_PERIOD_NANOS: u64 = 0;
@@ -56,7 +54,7 @@ enum ConnectionMsg {
 }
 
 impl ConnectionMsg {
-    async fn run(&self, rpc_client: &RpcClient, signer: ibc::signer::Signer) -> anyhow::Result<()> {
+    async fn run(&self, rpc_client: &RpcClient) -> anyhow::Result<()> {
         match self {
             Self::OpenInit { client_id } => {
                 let msg = RawMsgConnectionOpenInit {
@@ -64,7 +62,7 @@ impl ConnectionMsg {
                     counterparty: None,
                     version: None,
                     delay_period: DELAY_PERIOD_NANOS,
-                    signer: signer.to_string(),
+                    signer: "".to_owned(),
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
@@ -92,7 +90,7 @@ impl ConnectionMsg {
                     proof_client: vec![],
                     proof_consensus: vec![],
                     consensus_height: None,
-                    signer: signer.to_string(),
+                    signer: "".to_owned(),
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
@@ -128,7 +126,7 @@ impl ConnectionMsg {
                     proof_client: vec![],
                     proof_consensus: vec![],
                     consensus_height: None,
-                    signer: signer.to_string(),
+                    signer: "".to_owned(),
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
@@ -142,7 +140,7 @@ impl ConnectionMsg {
                     connection_id: connection_id.to_owned(),
                     proof_ack: vec![],
                     proof_height: None,
-                    signer: signer.to_string(),
+                    signer: "".to_owned(),
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
@@ -166,44 +164,17 @@ pub(crate) struct Args {
     #[arg(long, default_value = "http://127.0.0.1:8899")]
     endpoint: String,
 
-    /// File path to payer keypair
-    #[arg(long)]
-    payer: Option<PathBuf>,
-
     /// Message kind to generate
     #[command(subcommand)]
     kind: MsgKind,
 }
 
-pub(crate) async fn run(
-    Args {
-        endpoint,
-        payer,
-        kind,
-    }: Args,
-) -> anyhow::Result<()> {
-    let payer = match payer {
-        Some(payer) => payer,
-        None => {
-            let mut keypair_path = dirs_next::home_dir()
-                .ok_or_else(|| anyhow!("Could not retrieve home directory"))?;
-            keypair_path.extend([".config", "solana", "id.json"]);
-            keypair_path
-        }
-    };
-    let payer = read_keypair_file(&payer)
-        .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?;
-    let signer = payer
-        .pubkey()
-        .to_string()
-        .parse()
-        .expect("Pubkey should never be empty");
-
+pub(crate) async fn run(Args { endpoint, kind }: Args) -> anyhow::Result<()> {
     let rpc_client = RpcClient::new(endpoint);
 
     match kind {
         MsgKind::Connection(msg) => {
-            msg.run(&rpc_client, signer).await?;
+            msg.run(&rpc_client).await?;
         }
     }
 
