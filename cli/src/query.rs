@@ -14,7 +14,6 @@ use {
     ibc::core::{
         ics02_client::height::Height,
         ics04_channel::packet::Sequence,
-        ics23_commitment::commitment::CommitmentRoot,
         ics24_host::{
             identifier::{ChannelId, ClientId, ConnectionId, PortId},
             path::{
@@ -26,7 +25,6 @@ use {
     },
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
-    solana_sdk::hash::Hash,
     std::{
         collections::HashMap,
         io::{self, Write as _},
@@ -255,8 +253,20 @@ impl ChainStateKind {
             Self::HostConsensusState { height } => {
                 let slot = eclipse_chain::slot_of_height(height)?;
                 let block = rpc_client.get_block(slot).await?;
-                let commitment_root =
-                    CommitmentRoot::from_bytes(block.blockhash.parse::<Hash>()?.as_ref());
+
+                let raw_account_data = rpc_client
+                    .get_account_data(&eclipse_ibc_program::STORAGE_KEY)
+                    .await?;
+
+                let IbcAccountData {
+                    store: ibc_store, ..
+                } = bincode::deserialize(&raw_account_data)?;
+
+                let ibc_state = IbcState::new(&ibc_store, slot);
+                let commitment_root = ibc_state
+                    .get_root_option(slot)?
+                    .ok_or_else(|| anyhow!("No commitment root found for slot {slot}"))?;
+
                 let timestamp = TendermintTime::from_unix_timestamp(
                     block
                         .block_time
