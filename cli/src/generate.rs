@@ -3,12 +3,19 @@ use {
     clap::{Parser, Subcommand},
     eclipse_ibc_state::{IbcAccountData, IbcState, IbcStore},
     ibc::core::ics24_host::path::{ClientStatePath, ConnectionPath},
-    ibc_proto::ibc::core::connection::v1::{
-        MsgConnectionOpenAck as RawMsgConnectionOpenAck,
-        MsgConnectionOpenConfirm as RawMsgConnectionOpenConfirm,
-        MsgConnectionOpenInit as RawMsgConnectionOpenInit,
-        MsgConnectionOpenTry as RawMsgConnectionOpenTry,
+    ibc_proto::ibc::core::{
+        client::v1::{
+            MsgCreateClient as RawMsgCreateClient, MsgUpdateClient as RawMsgUpdateClient,
+            MsgUpgradeClient as RawMsgUpgradeClient,
+        },
+        connection::v1::{
+            MsgConnectionOpenAck as RawMsgConnectionOpenAck,
+            MsgConnectionOpenConfirm as RawMsgConnectionOpenConfirm,
+            MsgConnectionOpenInit as RawMsgConnectionOpenInit,
+            MsgConnectionOpenTry as RawMsgConnectionOpenTry,
+        },
     },
+    serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     std::io::{self, Write as _},
 };
@@ -36,8 +43,64 @@ fn get_ibc_state(ibc_store: &IbcStore) -> anyhow::Result<IbcState> {
     Ok(IbcState::new(ibc_store, latest_version))
 }
 
+fn print_json<T>(msg: T) -> anyhow::Result<()>
+where
+    T: Serialize,
+{
+    let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
+    writeln!(io::stdout(), "{json_str}")?;
+    Ok(())
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum ClientMsg {
+    Create,
+    Update { client_id: String },
+    Upgrade { client_id: String },
+}
+
+impl ClientMsg {
+    async fn generate(&self, _rpc_client: &RpcClient) -> anyhow::Result<()> {
+        match self {
+            Self::Create => {
+                let msg = RawMsgCreateClient {
+                    client_state: None,
+                    consensus_state: None,
+                    signer: "".to_owned(),
+                };
+
+                print_json(msg)?;
+                Ok(())
+            }
+            Self::Update { client_id } => {
+                let msg = RawMsgUpdateClient {
+                    client_id: client_id.clone(),
+                    header: None,
+                    signer: "".to_owned(),
+                };
+
+                print_json(msg)?;
+                Ok(())
+            }
+            Self::Upgrade { client_id } => {
+                let msg = RawMsgUpgradeClient {
+                    client_id: client_id.clone(),
+                    client_state: None,
+                    consensus_state: None,
+                    proof_upgrade_client: vec![],
+                    proof_upgrade_consensus_state: vec![],
+                    signer: "".to_owned(),
+                };
+
+                print_json(msg)?;
+                Ok(())
+            }
+        }
+    }
+}
+
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug, Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 enum ConnectionMsg {
     OpenInit {
         client_id: String,
@@ -55,7 +118,7 @@ enum ConnectionMsg {
 }
 
 impl ConnectionMsg {
-    async fn run(&self, rpc_client: &RpcClient) -> anyhow::Result<()> {
+    async fn generate(&self, rpc_client: &RpcClient) -> anyhow::Result<()> {
         match self {
             Self::OpenInit { client_id } => {
                 let msg = RawMsgConnectionOpenInit {
@@ -66,9 +129,7 @@ impl ConnectionMsg {
                     signer: "".to_owned(),
                 };
 
-                let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
-
+                print_json(msg)?;
                 Ok(())
             }
             Self::OpenTry { client_id } => {
@@ -94,9 +155,7 @@ impl ConnectionMsg {
                     signer: "".to_owned(),
                 };
 
-                let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
-
+                print_json(msg)?;
                 Ok(())
             }
             Self::OpenAck {
@@ -130,9 +189,7 @@ impl ConnectionMsg {
                     signer: "".to_owned(),
                 };
 
-                let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
-
+                print_json(msg)?;
                 Ok(())
             }
             Self::OpenConfirm { connection_id } => {
@@ -144,17 +201,17 @@ impl ConnectionMsg {
                     signer: "".to_owned(),
                 };
 
-                let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
-
+                print_json(msg)?;
                 Ok(())
             }
         }
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 enum MsgKind {
+    #[command(subcommand)]
+    Client(ClientMsg),
     #[command(subcommand)]
     Connection(ConnectionMsg),
 }
@@ -174,8 +231,11 @@ pub(crate) async fn run(Args { endpoint, kind }: Args) -> anyhow::Result<()> {
     let rpc_client = RpcClient::new(endpoint);
 
     match kind {
+        MsgKind::Client(msg) => {
+            msg.generate(&rpc_client).await?;
+        }
         MsgKind::Connection(msg) => {
-            msg.run(&rpc_client).await?;
+            msg.generate(&rpc_client).await?;
         }
     }
 

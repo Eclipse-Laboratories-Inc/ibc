@@ -35,6 +35,15 @@ use {
     tendermint::time::Time as TendermintTime,
 };
 
+fn print_json<T>(msg: T) -> anyhow::Result<()>
+where
+    T: Serialize,
+{
+    let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
+    writeln!(io::stdout(), "{json_str}")?;
+    Ok(())
+}
+
 #[derive(Clone, Debug, Subcommand)]
 enum StateKind {
     #[command(flatten)]
@@ -259,10 +268,8 @@ impl ChainStateKind {
                     commitment_root,
                     timestamp,
                 };
-                let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(consensus_state)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
 
+                print_json(consensus_state)?;
                 Ok(())
             }
             Self::IbcMetadata => {
@@ -275,10 +282,7 @@ impl ChainStateKind {
                     ..
                 } = bincode::deserialize(&raw_account_data)?;
 
-                let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(ibc_metadata)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
-
+                print_json(ibc_metadata)?;
                 Ok(())
             }
             Self::IbcState => {
@@ -311,10 +315,7 @@ impl ChainStateKind {
                     .map(|(key_hash, value)| (hex::encode(key_hash.0), hex::encode(value)))
                     .collect::<HashMap<_, _>>();
 
-                let json_str =
-                    colored_json::to_colored_json_auto(&serde_json::to_value(ibc_state_map)?)?;
-                writeln!(io::stdout(), "{json_str}")?;
-
+                print_json(ibc_state_map)?;
                 Ok(())
             }
         }
