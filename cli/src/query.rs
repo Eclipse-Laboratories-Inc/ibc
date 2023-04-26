@@ -27,7 +27,11 @@ use {
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::hash::Hash,
-    std::{collections::HashMap, sync::Arc},
+    std::{
+        collections::HashMap,
+        io::{self, Write as _},
+        sync::Arc,
+    },
     tendermint::time::Time as TendermintTime,
 };
 
@@ -188,7 +192,7 @@ impl MerkleStateKind {
         let ibc_state = IbcState::new(&ibc_store, latest_version);
 
         let json_str = self.get_json_str(&ibc_state)?;
-        println!("{json_str}");
+        writeln!(io::stdout(), "{json_str}")?;
 
         Ok(())
     }
@@ -235,7 +239,7 @@ impl ChainStateKind {
             Self::HostHeight => {
                 let slot = rpc_client.get_slot().await?;
                 let height = eclipse_chain::height_of_slot(slot)?;
-                println!("{height}");
+                writeln!(io::stdout(), "{height}")?;
 
                 Ok(())
             }
@@ -257,7 +261,7 @@ impl ChainStateKind {
                 };
                 let json_str =
                     colored_json::to_colored_json_auto(&serde_json::to_value(consensus_state)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }
@@ -273,7 +277,7 @@ impl ChainStateKind {
 
                 let json_str =
                     colored_json::to_colored_json_auto(&serde_json::to_value(ibc_metadata)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }
@@ -309,7 +313,7 @@ impl ChainStateKind {
 
                 let json_str =
                     colored_json::to_colored_json_auto(&serde_json::to_value(ibc_state_map)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }

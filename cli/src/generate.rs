@@ -10,6 +10,7 @@ use {
         MsgConnectionOpenTry as RawMsgConnectionOpenTry,
     },
     solana_client::nonblocking::rpc_client::RpcClient,
+    std::io::{self, Write as _},
 };
 
 const DELAY_PERIOD_NANOS: u64 = 0;
@@ -66,7 +67,7 @@ impl ConnectionMsg {
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }
@@ -94,7 +95,7 @@ impl ConnectionMsg {
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }
@@ -112,7 +113,7 @@ impl ConnectionMsg {
                         anyhow!("Connection does not exist for client ID: {client_id}")
                     })?;
                 let counterparty = connection_end.counterparty.ok_or_else(|| {
-                    anyhow!("Counterparty does nto exist for client ID: {client_id}")
+                    anyhow!("Counterparty does not exist for client ID: {client_id}")
                 })?;
 
                 // TODO: Add commitment proofs
@@ -130,7 +131,7 @@ impl ConnectionMsg {
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }
@@ -144,7 +145,7 @@ impl ConnectionMsg {
                 };
 
                 let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
-                println!("{json_str}");
+                writeln!(io::stdout(), "{json_str}")?;
 
                 Ok(())
             }
