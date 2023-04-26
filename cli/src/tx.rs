@@ -42,7 +42,7 @@ use {
         transaction::Transaction,
     },
     std::{
-        io::{self, BufReader},
+        io::{self, BufReader, Write as _},
         path::PathBuf,
     },
 };
@@ -331,7 +331,7 @@ pub(crate) async fn run(
         .send_and_confirm_transaction_with_spinner(&tx)
         .await?;
 
-    println!("Submitted IBC tx: {sig}");
+    writeln!(io::stdout(), "Submitted IBC tx: {sig}")?;
 
     Ok(())
 }
