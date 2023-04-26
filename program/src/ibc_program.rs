@@ -42,7 +42,7 @@ fn with_ibc_handler<F>(
 where
     F: FnOnce(&mut IbcHandler) -> Result<(), InstructionError>,
 {
-    instruction_context.check_number_of_instruction_accounts(4)?;
+    instruction_context.check_number_of_instruction_accounts(3)?;
 
     let mut storage_account =
         instruction_context.try_borrow_instruction_account(transaction_context, 1)?;
@@ -54,15 +54,12 @@ where
     }
 
     let clock = get_sysvar_with_account_check::clock(invoke_context, instruction_context, 2)?;
-    let slot_hashes =
-        get_sysvar_with_account_check::slot_hashes(invoke_context, instruction_context, 3)?;
 
     let mut ibc_account_data = IbcAccountData::read_from_account(&storage_account, invoke_context)?;
     let mut ibc_handler = IbcHandler::new(
         &ibc_account_data.store,
         &mut ibc_account_data.metadata,
         &clock,
-        slot_hashes,
     )
     .map_err(|err| {
         ic_msg!(invoke_context, "failed to init IBC handler: {:?}", err);

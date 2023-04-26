@@ -28,7 +28,7 @@ use {
                 Version,
             },
             ics05_port::error::PortError,
-            ics23_commitment::commitment::{CommitmentPrefix, CommitmentRoot},
+            ics23_commitment::commitment::CommitmentPrefix,
             ics24_host::{
                 identifier::{ChannelId, ClientId, ConnectionId, PortId},
                 path::{
@@ -50,9 +50,9 @@ use {
         msg,
         program::{get_return_data, invoke},
         pubkey::Pubkey,
-        sysvar::{clock::Clock, slot_hashes::SlotHashes},
+        sysvar::clock::Clock,
     },
-    std::{collections::BTreeMap, sync::Arc, time::Duration},
+    std::{collections::BTreeMap, time::Duration},
     tendermint::time::Time as TendermintTime,
 };
 
@@ -62,7 +62,6 @@ pub(super) struct IbcHandler<'a> {
     metadata: &'a mut IbcMetadata,
     current_slot: Slot,
     current_time: TendermintTime,
-    slot_hashes: Arc<SlotHashes>,
     max_expected_time_per_block: Duration,
     module_by_id: BTreeMap<ModuleId, Box<dyn Module>>,
 }
@@ -74,7 +73,6 @@ impl<'a> IbcHandler<'a> {
         store: &'a IbcStore,
         metadata: &'a mut IbcMetadata,
         clock: &Clock,
-        slot_hashes: Arc<SlotHashes>,
     ) -> anyhow::Result<Self> {
         let state = IbcState::new(store, clock.slot);
         let all_module_ids = state.get(&AllModulesPath)?.unwrap_or_default();
@@ -92,19 +90,20 @@ impl<'a> IbcHandler<'a> {
             metadata,
             current_slot: clock.slot,
             current_time: eclipse_chain::tendermint_time_from_clock(clock),
-            slot_hashes,
             max_expected_time_per_block: eclipse_chain::MAX_EXPECTED_SLOT_TIME,
             module_by_id,
         })
     }
 
-    fn consensus_state(&self, slot: Slot) -> Option<Box<dyn ConsensusState>> {
-        let hash = self.slot_hashes.get(&slot)?;
-        Some(Box::new(EclipseConsensusState {
-            commitment_root: CommitmentRoot::from_bytes(hash.as_ref()),
-            // TODO: Adjust the time based on the slot
-            timestamp: self.current_time,
-        }))
+    fn consensus_state(&self, slot: Slot) -> anyhow::Result<Option<Box<dyn ConsensusState>>> {
+        match self.state.get_root_option(slot)? {
+            None => Ok(None),
+            Some(commitment_root) => Ok(Some(Box::new(EclipseConsensusState {
+                commitment_root,
+                // TODO: Adjust the time based on the slot
+                timestamp: self.current_time,
+            }))),
+        }
     }
 
     pub(super) fn commit(&mut self) -> anyhow::Result<()> {
@@ -447,6 +446,9 @@ impl<'a> ValidationContext for IbcHandler<'a> {
         let slot = eclipse_chain::slot_of_height(*height)?;
         Ok(self
             .consensus_state(slot)
+            .map_err(|err| ClientError::ClientSpecific {
+                description: err.to_string(),
+            })?
             .ok_or(ClientError::MissingLocalConsensusState { height: *height })?)
     }
 

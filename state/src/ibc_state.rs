@@ -6,7 +6,7 @@ use {
     },
     eclipse_ibc_known_path::KnownPath,
     eclipse_ibc_known_proto::KnownProto,
-    ibc_proto::ibc::core::commitment::v1::MerkleRoot,
+    ibc::core::ics23_commitment::commitment::CommitmentRoot,
     ics23::ExistenceProof,
     jmt::{storage::TreeWriter, Sha256Jmt},
     sha2::Sha256,
@@ -43,12 +43,11 @@ impl<'a> IbcState<'a> {
         }
     }
 
-    #[allow(unused)]
-    pub fn get_root(&self) -> anyhow::Result<MerkleRoot> {
-        let jmt::RootHash(root_hash) = self.state_jmt.get_root_hash(self.version)?;
-        Ok(MerkleRoot {
-            hash: root_hash.to_vec(),
-        })
+    pub fn get_root_option(&self, slot: Slot) -> anyhow::Result<Option<CommitmentRoot>> {
+        Ok(self
+            .state_jmt
+            .get_root_hash_option(slot)?
+            .map(|jmt::RootHash(root_hash)| CommitmentRoot::from_bytes(&root_hash)))
     }
 
     pub fn get<K>(&self, key: &K) -> anyhow::Result<Option<K::Value>>

@@ -38,7 +38,7 @@ use {
         pubkey::Pubkey,
         signer::{keypair::read_keypair_file, Signer as _},
         system_program,
-        sysvar::{clock, rent, slot_hashes},
+        sysvar::{clock, rent},
         transaction::Transaction,
     },
     std::{
@@ -275,7 +275,6 @@ impl TxKind {
                     AccountMeta::new_readonly(payer_key, true),
                     AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
                     AccountMeta::new_readonly(clock::id(), false),
-                    AccountMeta::new_readonly(slot_hashes::id(), false),
                 ]
             }
         }
