@@ -24,9 +24,13 @@ pub(crate) async fn get_consensus_state(
         store: ibc_store, ..
     } = bincode::deserialize(&raw_account_data)?;
 
-    let ibc_state = IbcState::new(&ibc_store, slot);
+    let version = ibc_store
+        .read()?
+        .find_version(slot)
+        .ok_or_else(|| anyhow!("No IBC state versions found"))?;
+    let ibc_state = IbcState::new(&ibc_store, version);
     let commitment_root = ibc_state
-        .get_root_option(slot)?
+        .get_root_option(version)?
         .ok_or_else(|| anyhow!("No commitment root found for slot {slot}"))?;
 
     let timestamp = TendermintTime::from_unix_timestamp(

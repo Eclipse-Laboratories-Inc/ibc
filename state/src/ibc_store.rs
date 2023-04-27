@@ -14,7 +14,7 @@ pub struct InnerStore {
     #[serde(with = "store_nodes")]
     nodes: BTreeMap<jmt::storage::NodeKey, jmt::storage::Node>,
     value_history: HashMap<jmt::KeyHash, BTreeMap<jmt::Version, Option<jmt::OwnedValue>>>,
-    latest_version: Option<jmt::Version>,
+    versions: Vec<jmt::Version>,
 }
 
 mod store_nodes {
@@ -89,7 +89,14 @@ mod store_nodes {
 
 impl InnerStore {
     pub fn latest_version(&self) -> Option<jmt::Version> {
-        self.latest_version
+        self.versions.last().map(|version| *version)
+    }
+
+    pub fn find_version(&self, max_version: jmt::Version) -> Option<jmt::Version> {
+        let first_version_past = self
+            .versions
+            .partition_point(|&version| version <= max_version);
+        (first_version_past > 0).then(|| self.versions[first_version_past - 1])
     }
 }
 
@@ -156,24 +163,24 @@ impl TreeWriter for IbcStore {
             inner.nodes.insert(node_key.clone(), node.clone());
         }
 
-        for ((version, key_hash), value) in node_batch.values() {
-            let versions = inner.value_history.entry(*key_hash).or_default();
+        for (&(version, key_hash), value) in node_batch.values() {
+            let versions = inner.value_history.entry(key_hash).or_default();
             if let Some((&last_version, _)) = versions.last_key_value() {
-                if *version < last_version {
+                if version < last_version {
                     bail!(
                         "value must be latest version; last version: {}, new version: {}",
                         last_version,
-                        *version,
+                        version,
                     );
                 }
             }
-            versions.insert(*version, value.clone());
+            versions.insert(version, value.clone());
 
             if inner
-                .latest_version
-                .map_or(true, |latest_version| *version < latest_version)
+                .latest_version()
+                .map_or(true, |latest_version| latest_version < version)
             {
-                inner.latest_version = Some(*version);
+                inner.versions.push(version);
             }
         }
 

@@ -59,6 +59,7 @@ use {
 #[derive(Debug)]
 pub(super) struct IbcHandler<'a> {
     state: IbcState<'a>,
+    store: &'a IbcStore,
     metadata: &'a mut IbcMetadata,
     current_slot: Slot,
     current_time: TendermintTime,
@@ -87,6 +88,7 @@ impl<'a> IbcHandler<'a> {
 
         Ok(Self {
             state,
+            store,
             metadata,
             current_slot: clock.slot,
             current_time: eclipse_chain::tendermint_time_from_clock(clock),
@@ -96,7 +98,13 @@ impl<'a> IbcHandler<'a> {
     }
 
     fn consensus_state(&self, slot: Slot) -> anyhow::Result<Option<Box<dyn ConsensusState>>> {
-        match self.state.get_root_option(slot)? {
+        let version = self
+            .store
+            .read()?
+            .find_version(slot)
+            .ok_or_else(|| anyhow!("No IBC state versions found"))?;
+
+        match self.state.get_root_option(version)? {
             None => Ok(None),
             Some(commitment_root) => Ok(Some(Box::new(EclipseConsensusState {
                 commitment_root,
