@@ -24,9 +24,9 @@ use {
     },
 };
 
-const ROUTER_ERR_CODE: u32 = 151;
-const PORT_ERR_CODE: u32 = 152;
-const STORAGE_ERR_CODE: u32 = 153;
+const ROUTER_ERR_CODE: u32 = 0x97;
+const PORT_ERR_CODE: u32 = 0x98;
+const STORAGE_ERR_CODE: u32 = 0x99;
 
 pub const STORAGE_KEY: Pubkey = Pubkey::new_from_array([
     135, 90, 195, 29, 90, 182, 162, 153, 214, 170, 125, 126, 161, 2, 167, 102, 196, 107, 28, 247,
