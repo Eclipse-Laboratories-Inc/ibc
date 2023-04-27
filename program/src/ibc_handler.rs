@@ -67,8 +67,6 @@ pub(super) struct IbcHandler<'a> {
     module_by_id: BTreeMap<ModuleId, Box<dyn Module>>,
 }
 
-const COMMITMENT_PREFIX: &str = "ibc";
-
 impl<'a> IbcHandler<'a> {
     pub(super) fn new(
         store: &'a IbcStore,
@@ -486,9 +484,8 @@ impl<'a> ValidationContext for IbcHandler<'a> {
     }
 
     fn commitment_prefix(&self) -> CommitmentPrefix {
-        COMMITMENT_PREFIX
-            .to_owned()
-            .into_bytes()
+        eclipse_chain::COMMITMENT_PREFIX
+            .to_vec()
             .try_into()
             .expect("Prefix is not empty")
     }

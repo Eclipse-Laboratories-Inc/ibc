@@ -11,8 +11,9 @@ use {
             MsgCreateClient as RawMsgCreateClient, MsgUpdateClient as RawMsgUpdateClient,
             MsgUpgradeClient as RawMsgUpgradeClient,
         },
+        commitment::v1::MerklePrefix as RawMerklePrefix,
         connection::v1::{
-            MsgConnectionOpenAck as RawMsgConnectionOpenAck,
+            Counterparty as RawCounterparty, MsgConnectionOpenAck as RawMsgConnectionOpenAck,
             MsgConnectionOpenConfirm as RawMsgConnectionOpenConfirm,
             MsgConnectionOpenInit as RawMsgConnectionOpenInit,
             MsgConnectionOpenTry as RawMsgConnectionOpenTry,
@@ -163,9 +164,17 @@ impl ConnectionMsg {
     async fn generate(&self, rpc_client: &RpcClient) -> anyhow::Result<()> {
         match self {
             Self::OpenInit { client_id } => {
+                let counterparty = RawCounterparty {
+                    client_id: client_id.to_owned(),
+                    connection_id: "".to_owned(),
+                    prefix: Some(RawMerklePrefix {
+                        key_prefix: eclipse_chain::COMMITMENT_PREFIX.to_vec(),
+                    }),
+                };
+
                 let msg = RawMsgConnectionOpenInit {
                     client_id: client_id.to_owned(),
-                    counterparty: None,
+                    counterparty: Some(counterparty),
                     version: None,
                     delay_period: DELAY_PERIOD_NANOS,
                     signer: "".to_owned(),
@@ -175,6 +184,14 @@ impl ConnectionMsg {
                 Ok(())
             }
             Self::OpenTry { client_id } => {
+                let counterparty = RawCounterparty {
+                    client_id: client_id.to_owned(),
+                    connection_id: "".to_owned(),
+                    prefix: Some(RawMerklePrefix {
+                        key_prefix: eclipse_chain::COMMITMENT_PREFIX.to_vec(),
+                    }),
+                };
+
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
@@ -186,7 +203,7 @@ impl ConnectionMsg {
                     client_id: client_id.to_owned(),
                     previous_connection_id: "".to_owned(),
                     client_state,
-                    counterparty: None,
+                    counterparty: Some(counterparty),
                     delay_period: DELAY_PERIOD_NANOS,
                     counterparty_versions: vec![],
                     proof_height: None,

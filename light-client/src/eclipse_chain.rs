@@ -14,6 +14,7 @@ pub const MAX_EXPECTED_SLOT_TIME: Duration = Duration::from_millis(600);
 pub const IBC_MESSAGE_VALID_DURATION: Duration = Duration::from_secs(3600);
 pub const CHAIN_NAME_PREFIX: &str = "eclipse";
 pub const UPGRADE_PREFIX: &str = "eclipse-upgrade";
+pub const COMMITMENT_PREFIX: &[u8] = b"ibc";
 const REVISION_NUMBER: u64 = 0;
 
 pub fn chain_id(chain_name: &str) -> ChainId {
