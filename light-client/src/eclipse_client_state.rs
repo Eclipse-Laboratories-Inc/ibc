@@ -203,7 +203,7 @@ impl ClientState for EclipseClientState {
 
         let header = EclipseHeader::try_from(client_message)?;
 
-        if header.height >= self.latest_height() {
+        if self.latest_height() >= header.height {
             return Err(ClientError::LowHeaderHeight {
                 header_height: header.height,
                 latest_height: self.latest_height(),
