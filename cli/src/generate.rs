@@ -195,6 +195,12 @@ impl ConnectionMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
+                let version = ibc_store
+                    .read()?
+                    .latest_version()
+                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
+                let height = eclipse_chain::height_of_slot(version)?;
+
                 let client_state = ibc_state.get_raw(&ClientStatePath::new(&client_id.parse()?))?;
 
                 // TODO: Add commitment proofs
@@ -206,11 +212,11 @@ impl ConnectionMsg {
                     counterparty: Some(counterparty),
                     delay_period: DELAY_PERIOD_NANOS,
                     counterparty_versions: vec![],
-                    proof_height: None,
-                    proof_init: vec![],
-                    proof_client: vec![],
-                    proof_consensus: vec![],
-                    consensus_height: None,
+                    proof_height: Some(height.into()),
+                    proof_init: vec![0x0],
+                    proof_client: vec![0x0],
+                    proof_consensus: vec![0x0],
+                    consensus_height: Some(height.into()),
                     signer: "".to_owned(),
                 };
 
@@ -223,6 +229,12 @@ impl ConnectionMsg {
             } => {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
+
+                let version = ibc_store
+                    .read()?
+                    .latest_version()
+                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
+                let height = eclipse_chain::height_of_slot(version)?;
 
                 let client_state = ibc_state.get_raw(&ClientStatePath::new(&client_id.parse()?))?;
                 let connection_end = ibc_state
@@ -240,11 +252,11 @@ impl ConnectionMsg {
                     counterparty_connection_id: counterparty.connection_id,
                     version: None,
                     client_state,
-                    proof_height: None,
-                    proof_try: vec![],
-                    proof_client: vec![],
-                    proof_consensus: vec![],
-                    consensus_height: None,
+                    proof_height: Some(height.into()),
+                    proof_try: vec![0x0],
+                    proof_client: vec![0x0],
+                    proof_consensus: vec![0x0],
+                    consensus_height: Some(height.into()),
                     signer: "".to_owned(),
                 };
 
@@ -252,11 +264,19 @@ impl ConnectionMsg {
                 Ok(())
             }
             Self::OpenConfirm { connection_id } => {
+                let ibc_store = get_ibc_store(rpc_client).await?;
+
+                let version = ibc_store
+                    .read()?
+                    .latest_version()
+                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
+                let height = eclipse_chain::height_of_slot(version)?;
+
                 // TODO: Add commitment proofs
                 let msg = RawMsgConnectionOpenConfirm {
                     connection_id: connection_id.to_owned(),
-                    proof_ack: vec![],
-                    proof_height: None,
+                    proof_ack: vec![0x0],
+                    proof_height: Some(height.into()),
                     signer: "".to_owned(),
                 };
 
