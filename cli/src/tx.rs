@@ -268,6 +268,7 @@ impl TxKind {
                 AccountMeta::new_readonly(payer_key, true),
                 AccountMeta::new(eclipse_ibc_program::STORAGE_KEY, false),
                 AccountMeta::new_readonly(rent::id(), false),
+                AccountMeta::new_readonly(clock::id(), false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
             Self::Channel(_) | Self::Client(_) | Self::Connection(_) | Self::Port(_) => {

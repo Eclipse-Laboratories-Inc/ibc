@@ -89,7 +89,7 @@ mod store_nodes {
 
 impl InnerStore {
     pub fn latest_version(&self) -> Option<jmt::Version> {
-        self.versions.last().map(|version| *version)
+        self.versions.last().copied()
     }
 
     pub fn find_version(&self, max_version: jmt::Version) -> Option<jmt::Version> {

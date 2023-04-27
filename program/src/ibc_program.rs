@@ -8,7 +8,7 @@ use {
         id,
     },
     eclipse_ibc_known_proto::KnownProto,
-    eclipse_ibc_state::IbcAccountData,
+    eclipse_ibc_state::{internal_path::StateInitializedPath, IbcAccountData, IbcState},
     ibc::core::handler::dispatch,
     ibc_proto::google::protobuf,
     solana_program_runtime::{
@@ -86,7 +86,7 @@ fn init_storage_account(
     payer_key: Pubkey,
     min_rent_balance: u64,
 ) -> Result<(), InstructionError> {
-    // System account is at index 3
+    // System account is at index 4
     invoke_context.native_invoke(
         system_instruction::create_account(
             &payer_key,
@@ -107,7 +107,21 @@ fn init_storage_account(
         return Err(InstructionError::InvalidArgument);
     }
 
+    let clock = get_sysvar_with_account_check::clock(invoke_context, instruction_context, 3)?;
+
     let ibc_account_data = IbcAccountData::default();
+
+    let mut ibc_state = IbcState::new(&ibc_account_data.store, clock.slot);
+    ibc_state.set(&StateInitializedPath, ());
+    ibc_state.commit().map_err(|err| {
+        ic_msg!(
+            invoke_context,
+            "failed to commit the new IBC state Merkle tree: {:?}",
+            err
+        );
+        InstructionError::Custom(STORAGE_ERR_CODE)
+    })?;
+
     ibc_account_data.write_to_account(&mut storage_account, invoke_context)?;
     Ok(())
 }
@@ -194,7 +208,7 @@ pub fn process_instruction(
             )?;
         }
         IbcInstruction::Admin(AdminInstruction::InitStorageAccount(MsgInitStorageAccount)) => {
-            instruction_context.check_number_of_instruction_accounts(4)?;
+            instruction_context.check_number_of_instruction_accounts(5)?;
 
             let rent = get_sysvar_with_account_check::rent(invoke_context, instruction_context, 2)?;
             let min_rent_balance = rent.minimum_balance(MAX_CPI_INSTRUCTION_DATA_LEN as usize);

@@ -189,6 +189,10 @@ impl KnownProtoWithFrom for Sequence {
     type RawWithFrom = u64;
 }
 
+impl KnownProtoWithFrom for () {
+    type RawWithFrom = ();
+}
+
 impl KnownProtoWithFrom for protobuf::Any {
     type RawWithFrom = Self;
 }

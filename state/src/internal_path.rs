@@ -9,6 +9,14 @@ use {
 };
 
 #[derive(Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[display(fmt = "internal/stateInitialized")]
+pub struct StateInitializedPath;
+
+impl KnownPath for StateInitializedPath {
+    type Value = ();
+}
+
+#[derive(Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[display(fmt = "internal/clients/{_0}/updateTime/{_1}")]
 pub struct ClientUpdateTimePath(pub ClientId, pub Height);
 
