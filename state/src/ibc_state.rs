@@ -1,5 +1,6 @@
 use {
     crate::IbcStore,
+    anyhow::anyhow,
     core::{
         fmt::{self, Debug},
         mem,
@@ -91,8 +92,14 @@ impl<'a> IbcState<'a> {
     where
         K: KnownPath,
     {
+        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
+        let key_version = self
+            .state_store
+            .find_key_version(self.version, key_hash)?
+            .ok_or_else(|| anyhow!("Key {key} does not exist"))?;
+
         self.state_jmt
-            .get_with_ics23_proof(key.to_string().as_bytes().to_vec(), self.version)
+            .get_with_ics23_proof(key.to_string().as_bytes().to_vec(), key_version)
     }
 
     pub fn set<K>(&mut self, key: &K, value: K::Value)

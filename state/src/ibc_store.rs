@@ -114,6 +114,23 @@ impl IbcStore {
     fn write(&self) -> anyhow::Result<RwLockWriteGuard<'_, InnerStore>> {
         self.inner.write().map_err(|err| anyhow!("{err}"))
     }
+
+    pub fn find_key_version(
+        &self,
+        max_version: jmt::Version,
+        key_hash: jmt::KeyHash,
+    ) -> anyhow::Result<Option<jmt::Version>> {
+        Ok(self
+            .read()?
+            .value_history
+            .get(&key_hash)
+            .and_then(|version_history| {
+                version_history
+                    .range(..=max_version)
+                    .next_back()
+                    .map(|(&version, _)| version)
+            }))
+    }
 }
 
 impl TreeReader for IbcStore {

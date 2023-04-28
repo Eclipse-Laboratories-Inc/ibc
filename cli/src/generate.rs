@@ -4,7 +4,7 @@ use {
     clap::{Parser, Subcommand},
     eclipse_ibc_known_proto::KnownAnyProto,
     eclipse_ibc_light_client::eclipse_chain,
-    eclipse_ibc_state::{IbcAccountData, IbcState, IbcStore},
+    eclipse_ibc_state::{internal_path::ConsensusHeightsPath, IbcAccountData, IbcState, IbcStore},
     ibc::core::{
         ics03_connection::version::{get_compatible_versions, Version as ConnectionVersion},
         ics24_host::path::{ClientConsensusStatePath, ClientStatePath, ConnectionPath},
@@ -236,6 +236,19 @@ impl ConnectionMsg {
                 let client_state =
                     ibc_state.get_raw(&ClientStatePath::new(&counterparty_client_id.parse()?))?;
 
+                let consensus_heights = ibc_state
+                    .get(&ConsensusHeightsPath(counterparty_client_id.parse()?))?
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Consensus heights not found for client ID {counterparty_client_id}"
+                        )
+                    })?
+                    .heights;
+                let height_for_proof_consensus = *consensus_heights
+                    .range(..=height)
+                    .next_back()
+                    .ok_or_else(|| anyhow!("No consensus height found <= height: {height}"))?;
+
                 let proof_init = existence_proof_to_merkle_proof(
                     ibc_state
                         .get_proof(&ConnectionPath::new(&counterparty_connection_id.parse()?))?,
@@ -244,7 +257,10 @@ impl ConnectionMsg {
                     ibc_state.get_proof(&ClientStatePath::new(&counterparty_client_id.parse()?))?,
                 );
                 let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
-                    &ClientConsensusStatePath::new(&counterparty_client_id.parse()?, &height),
+                    &ClientConsensusStatePath::new(
+                        &counterparty_client_id.parse()?,
+                        &height_for_proof_consensus,
+                    ),
                 )?);
 
                 #[allow(deprecated)]
@@ -286,6 +302,19 @@ impl ConnectionMsg {
                 let client_state =
                     ibc_state.get_raw(&ClientStatePath::new(&counterparty_client_id.parse()?))?;
 
+                let consensus_heights = ibc_state
+                    .get(&ConsensusHeightsPath(counterparty_client_id.parse()?))?
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Consensus heights not found for client ID {counterparty_client_id}"
+                        )
+                    })?
+                    .heights;
+                let height_for_proof_consensus = *consensus_heights
+                    .range(..=height)
+                    .next_back()
+                    .ok_or_else(|| anyhow!("No consensus height found <= height: {height}"))?;
+
                 let proof_try = existence_proof_to_merkle_proof(
                     ibc_state
                         .get_proof(&ConnectionPath::new(&counterparty_connection_id.parse()?))?,
@@ -294,7 +323,10 @@ impl ConnectionMsg {
                     ibc_state.get_proof(&ClientStatePath::new(&counterparty_client_id.parse()?))?,
                 );
                 let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
-                    &ClientConsensusStatePath::new(&counterparty_client_id.parse()?, &height),
+                    &ClientConsensusStatePath::new(
+                        &counterparty_client_id.parse()?,
+                        &height_for_proof_consensus,
+                    ),
                 )?);
 
                 let msg = RawMsgConnectionOpenAck {
