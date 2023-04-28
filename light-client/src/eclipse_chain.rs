@@ -48,7 +48,7 @@ pub fn tendermint_time_from_clock(clock: &Clock) -> TendermintTime {
 
 pub fn proof_specs() -> ProofSpecs {
     // TODO: Figure out top-level proof spec to use
-    vec![ics23::iavl_spec(), jmt::ics23_spec()].into()
+    vec![jmt::ics23_spec()].into()
 }
 
 #[cfg(test)]
