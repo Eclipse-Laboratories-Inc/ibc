@@ -14,7 +14,7 @@ use {
         },
         ics23_commitment::{
             commitment::{CommitmentPrefix, CommitmentProofBytes, CommitmentRoot},
-            merkle::{self, MerkleProof},
+            merkle::MerkleProof,
         },
         ics24_host::{
             identifier::{ChainId, ClientId},
@@ -318,7 +318,7 @@ impl ClientState for EclipseClientState {
         let last_height = self.latest_height().revision_height();
 
         let client_upgrade_path = vec![
-            eclipse_chain::UPGRADE_PREFIX.to_owned(),
+            //eclipse_chain::UPGRADE_PREFIX.to_owned(),
             ClientUpgradePath::UpgradedClientState(last_height).to_string(),
         ];
         let client_upgrade_merkle_path = MerklePath {
@@ -338,7 +338,7 @@ impl ClientState for EclipseClientState {
             .map_err(ClientError::Ics23Verification)?;
 
         let consensus_upgrade_path = vec![
-            eclipse_chain::UPGRADE_PREFIX.to_owned(),
+            //eclipse_chain::UPGRADE_PREFIX.to_owned(),
             ClientUpgradePath::UpgradedClientConsensusState(last_height).to_string(),
         ];
         let consensus_upgrade_merkle_path = MerklePath {
@@ -373,7 +373,7 @@ impl ClientState for EclipseClientState {
 
     fn verify_membership(
         &self,
-        prefix: &CommitmentPrefix,
+        _prefix: &CommitmentPrefix,
         proof: &CommitmentProofBytes,
         root: &CommitmentRoot,
         path: Path,
@@ -381,7 +381,10 @@ impl ClientState for EclipseClientState {
     ) -> Result<(), ClientError> {
         let proof_specs = eclipse_chain::proof_specs();
         let merkle_root: MerkleRoot = root.clone().into();
-        let merkle_path = merkle::apply_prefix(prefix, vec![path.to_string()]);
+        // TODO: Use `ics23_commitment::merkle::apply_prefix`
+        let merkle_path = MerklePath {
+            key_path: vec![path.to_string()],
+        };
         let merkle_proof: MerkleProof = RawMerkleProof::try_from(proof.clone())
             .map_err(ClientError::Ics23Verification)?
             .into();
@@ -394,14 +397,17 @@ impl ClientState for EclipseClientState {
 
     fn verify_non_membership(
         &self,
-        prefix: &CommitmentPrefix,
+        _prefix: &CommitmentPrefix,
         proof: &CommitmentProofBytes,
         root: &CommitmentRoot,
         path: Path,
     ) -> Result<(), ClientError> {
         let proof_specs = eclipse_chain::proof_specs();
         let merkle_root: MerkleRoot = root.clone().into();
-        let merkle_path = merkle::apply_prefix(prefix, vec![path.to_string()]);
+        // TODO: Use `ics23_commitment::merkle::apply_prefix`
+        let merkle_path = MerklePath {
+            key_path: vec![path.to_string()],
+        };
         let merkle_proof: MerkleProof = RawMerkleProof::try_from(proof.clone())
             .map_err(ClientError::Ics23Verification)?
             .into();
