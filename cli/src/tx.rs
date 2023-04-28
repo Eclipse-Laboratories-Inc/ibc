@@ -31,7 +31,7 @@ use {
         },
     },
     serde::de::DeserializeOwned,
-    solana_client::nonblocking::rpc_client::RpcClient,
+    solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig},
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
         message::Message,
@@ -45,6 +45,15 @@ use {
         io::{self, BufReader, Write as _},
         path::PathBuf,
     },
+};
+
+// Setting `skip_preflight: true` lets us see `ic_msg` log messages for failed txs.
+const RPC_SEND_TRANSACTION_CONFIG: RpcSendTransactionConfig = RpcSendTransactionConfig {
+    skip_preflight: true,
+    preflight_commitment: None,
+    encoding: None,
+    max_retries: None,
+    min_context_slot: None,
 };
 
 #[derive(Clone, Debug, Subcommand)]
@@ -328,7 +337,11 @@ pub(crate) async fn run(
 
     let tx = Transaction::new(&[&payer], message, blockhash);
     let sig = rpc_client
-        .send_and_confirm_transaction_with_spinner(&tx)
+        .send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            rpc_client.commitment(),
+            RPC_SEND_TRANSACTION_CONFIG,
+        )
         .await?;
 
     writeln!(io::stdout(), "Submitted IBC tx: {sig}")?;

@@ -22,6 +22,7 @@ eclipse-ibc-state = { workspace = true }
 hex = { workspace = true }
 ibc = { workspace = true }
 ibc-proto = { workspace = true }
+ics23 = { workspace = true }
 jmt = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true }

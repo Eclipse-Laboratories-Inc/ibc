@@ -5,20 +5,28 @@ use {
     eclipse_ibc_known_proto::KnownAnyProto,
     eclipse_ibc_light_client::eclipse_chain,
     eclipse_ibc_state::{IbcAccountData, IbcState, IbcStore},
-    ibc::core::ics24_host::path::{ClientStatePath, ConnectionPath},
-    ibc_proto::ibc::core::{
-        client::v1::{
-            MsgCreateClient as RawMsgCreateClient, MsgUpdateClient as RawMsgUpdateClient,
-            MsgUpgradeClient as RawMsgUpgradeClient,
-        },
-        commitment::v1::MerklePrefix as RawMerklePrefix,
-        connection::v1::{
-            Counterparty as RawCounterparty, MsgConnectionOpenAck as RawMsgConnectionOpenAck,
-            MsgConnectionOpenConfirm as RawMsgConnectionOpenConfirm,
-            MsgConnectionOpenInit as RawMsgConnectionOpenInit,
-            MsgConnectionOpenTry as RawMsgConnectionOpenTry,
-        },
+    ibc::core::{
+        ics03_connection::version::{get_compatible_versions, Version as ConnectionVersion},
+        ics24_host::path::{ClientConsensusStatePath, ClientStatePath, ConnectionPath},
     },
+    ibc_proto::{
+        ibc::core::{
+            client::v1::{
+                MsgCreateClient as RawMsgCreateClient, MsgUpdateClient as RawMsgUpdateClient,
+                MsgUpgradeClient as RawMsgUpgradeClient,
+            },
+            commitment::v1::{MerklePrefix as RawMerklePrefix, MerkleProof as RawMerkleProof},
+            connection::v1::{
+                Counterparty as RawCounterparty, MsgConnectionOpenAck as RawMsgConnectionOpenAck,
+                MsgConnectionOpenConfirm as RawMsgConnectionOpenConfirm,
+                MsgConnectionOpenInit as RawMsgConnectionOpenInit,
+                MsgConnectionOpenTry as RawMsgConnectionOpenTry,
+            },
+        },
+        ics23::CommitmentProof as IbcRawCommitmentProof,
+    },
+    ics23::{commitment_proof, CommitmentProof, ExistenceProof},
+    prost::Message as _,
     serde::Serialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     std::io::{self, Write as _},
@@ -54,6 +62,18 @@ where
     let json_str = colored_json::to_colored_json_auto(&serde_json::to_value(msg)?)?;
     writeln!(io::stdout(), "{json_str}")?;
     Ok(())
+}
+
+fn existence_proof_to_merkle_proof(existence_proof: ExistenceProof) -> RawMerkleProof {
+    let commitment_proof = CommitmentProof {
+        proof: Some(commitment_proof::Proof::Exist(existence_proof)),
+    };
+    let ibc_commitment_proof = IbcRawCommitmentProof::decode(&*commitment_proof.encode_to_vec())
+        .expect("CommitmentProof should be the same between ics23 and ibc-proto");
+
+    RawMerkleProof {
+        proofs: vec![ibc_commitment_proof],
+    }
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -147,25 +167,33 @@ impl ClientMsg {
 enum ConnectionMsg {
     OpenInit {
         client_id: String,
+        counterparty_client_id: String,
     },
     OpenTry {
         client_id: String,
+        counterparty_client_id: String,
+        counterparty_connection_id: String,
     },
     OpenAck {
-        client_id: String,
         connection_id: String,
+        counterparty_client_id: String,
+        counterparty_connection_id: String,
     },
     OpenConfirm {
         connection_id: String,
+        counterparty_connection_id: String,
     },
 }
 
 impl ConnectionMsg {
     async fn generate(&self, rpc_client: &RpcClient) -> anyhow::Result<()> {
         match self {
-            Self::OpenInit { client_id } => {
+            Self::OpenInit {
+                client_id,
+                counterparty_client_id,
+            } => {
                 let counterparty = RawCounterparty {
-                    client_id: client_id.to_owned(),
+                    client_id: counterparty_client_id.to_owned(),
                     connection_id: "".to_owned(),
                     prefix: Some(RawMerklePrefix {
                         key_prefix: eclipse_chain::COMMITMENT_PREFIX.to_vec(),
@@ -175,7 +203,7 @@ impl ConnectionMsg {
                 let msg = RawMsgConnectionOpenInit {
                     client_id: client_id.to_owned(),
                     counterparty: Some(counterparty),
-                    version: None,
+                    version: Some(ConnectionVersion::default().into()),
                     delay_period: DELAY_PERIOD_NANOS,
                     signer: "".to_owned(),
                 };
@@ -183,10 +211,14 @@ impl ConnectionMsg {
                 print_json(msg)?;
                 Ok(())
             }
-            Self::OpenTry { client_id } => {
+            Self::OpenTry {
+                client_id,
+                counterparty_client_id,
+                counterparty_connection_id,
+            } => {
                 let counterparty = RawCounterparty {
-                    client_id: client_id.to_owned(),
-                    connection_id: "".to_owned(),
+                    client_id: counterparty_client_id.to_owned(),
+                    connection_id: counterparty_connection_id.to_owned(),
                     prefix: Some(RawMerklePrefix {
                         key_prefix: eclipse_chain::COMMITMENT_PREFIX.to_vec(),
                     }),
@@ -201,9 +233,20 @@ impl ConnectionMsg {
                     .ok_or_else(|| anyhow!("No IBC state versions found"))?;
                 let height = eclipse_chain::height_of_slot(version)?;
 
-                let client_state = ibc_state.get_raw(&ClientStatePath::new(&client_id.parse()?))?;
+                let client_state =
+                    ibc_state.get_raw(&ClientStatePath::new(&counterparty_client_id.parse()?))?;
 
-                // TODO: Add commitment proofs
+                let proof_init = existence_proof_to_merkle_proof(
+                    ibc_state
+                        .get_proof(&ConnectionPath::new(&counterparty_connection_id.parse()?))?,
+                );
+                let proof_client = existence_proof_to_merkle_proof(
+                    ibc_state.get_proof(&ClientStatePath::new(&counterparty_client_id.parse()?))?,
+                );
+                let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                    &ClientConsensusStatePath::new(&counterparty_client_id.parse()?, &height),
+                )?);
+
                 #[allow(deprecated)]
                 let msg = RawMsgConnectionOpenTry {
                     client_id: client_id.to_owned(),
@@ -211,11 +254,14 @@ impl ConnectionMsg {
                     client_state,
                     counterparty: Some(counterparty),
                     delay_period: DELAY_PERIOD_NANOS,
-                    counterparty_versions: vec![],
+                    counterparty_versions: get_compatible_versions()
+                        .into_iter()
+                        .map(ConnectionVersion::into)
+                        .collect(),
                     proof_height: Some(height.into()),
-                    proof_init: vec![0x0],
-                    proof_client: vec![0x0],
-                    proof_consensus: vec![0x0],
+                    proof_init: proof_init.encode_to_vec(),
+                    proof_client: proof_client.encode_to_vec(),
+                    proof_consensus: proof_consensus.encode_to_vec(),
                     consensus_height: Some(height.into()),
                     signer: "".to_owned(),
                 };
@@ -224,8 +270,9 @@ impl ConnectionMsg {
                 Ok(())
             }
             Self::OpenAck {
-                client_id,
                 connection_id,
+                counterparty_client_id,
+                counterparty_connection_id,
             } => {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
@@ -236,26 +283,29 @@ impl ConnectionMsg {
                     .ok_or_else(|| anyhow!("No IBC state versions found"))?;
                 let height = eclipse_chain::height_of_slot(version)?;
 
-                let client_state = ibc_state.get_raw(&ClientStatePath::new(&client_id.parse()?))?;
-                let connection_end = ibc_state
-                    .get_raw(&ConnectionPath::new(&client_id.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Connection does not exist for client ID: {client_id}")
-                    })?;
-                let counterparty = connection_end.counterparty.ok_or_else(|| {
-                    anyhow!("Counterparty does not exist for client ID: {client_id}")
-                })?;
+                let client_state =
+                    ibc_state.get_raw(&ClientStatePath::new(&counterparty_client_id.parse()?))?;
 
-                // TODO: Add commitment proofs
+                let proof_try = existence_proof_to_merkle_proof(
+                    ibc_state
+                        .get_proof(&ConnectionPath::new(&counterparty_connection_id.parse()?))?,
+                );
+                let proof_client = existence_proof_to_merkle_proof(
+                    ibc_state.get_proof(&ClientStatePath::new(&counterparty_client_id.parse()?))?,
+                );
+                let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                    &ClientConsensusStatePath::new(&counterparty_client_id.parse()?, &height),
+                )?);
+
                 let msg = RawMsgConnectionOpenAck {
                     connection_id: connection_id.to_owned(),
-                    counterparty_connection_id: counterparty.connection_id,
-                    version: None,
+                    counterparty_connection_id: counterparty_connection_id.to_owned(),
+                    version: Some(ConnectionVersion::default().into()),
                     client_state,
                     proof_height: Some(height.into()),
-                    proof_try: vec![0x0],
-                    proof_client: vec![0x0],
-                    proof_consensus: vec![0x0],
+                    proof_try: proof_try.encode_to_vec(),
+                    proof_client: proof_client.encode_to_vec(),
+                    proof_consensus: proof_consensus.encode_to_vec(),
                     consensus_height: Some(height.into()),
                     signer: "".to_owned(),
                 };
@@ -263,8 +313,12 @@ impl ConnectionMsg {
                 print_json(msg)?;
                 Ok(())
             }
-            Self::OpenConfirm { connection_id } => {
+            Self::OpenConfirm {
+                connection_id,
+                counterparty_connection_id,
+            } => {
                 let ibc_store = get_ibc_store(rpc_client).await?;
+                let ibc_state = get_ibc_state(&ibc_store)?;
 
                 let version = ibc_store
                     .read()?
@@ -272,10 +326,14 @@ impl ConnectionMsg {
                     .ok_or_else(|| anyhow!("No IBC state versions found"))?;
                 let height = eclipse_chain::height_of_slot(version)?;
 
-                // TODO: Add commitment proofs
+                let proof_ack = existence_proof_to_merkle_proof(
+                    ibc_state
+                        .get_proof(&ConnectionPath::new(&counterparty_connection_id.parse()?))?,
+                );
+
                 let msg = RawMsgConnectionOpenConfirm {
                     connection_id: connection_id.to_owned(),
-                    proof_ack: vec![0x0],
+                    proof_ack: proof_ack.encode_to_vec(),
                     proof_height: Some(height.into()),
                     signer: "".to_owned(),
                 };
