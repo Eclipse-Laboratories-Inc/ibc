@@ -1,5 +1,4 @@
 use {
-    crate::module_instruction::*,
     anyhow::anyhow,
     core::{
         ops::Bound::{Excluded, Unbounded},
@@ -44,14 +43,7 @@ use {
         Signer,
     },
     ibc_proto::google::protobuf,
-    solana_sdk::{
-        clock::Slot,
-        instruction::Instruction,
-        msg,
-        program::{get_return_data, invoke},
-        pubkey::Pubkey,
-        sysvar::clock::Clock,
-    },
+    solana_sdk::{clock::Slot, msg, pubkey::Pubkey, sysvar::clock::Clock},
     std::{collections::BTreeMap, time::Duration},
     tendermint::time::Time as TendermintTime,
 };
@@ -754,444 +746,165 @@ impl<'a> IbcHandler<'a> {
 
 #[derive(Debug)]
 struct SolanaModule {
+    #[allow(unused)]
     program_id: Pubkey,
 }
 
 impl Module for SolanaModule {
     fn on_chan_open_init_validate(
         &self,
-        order: Order,
-        connection_hops: &[ConnectionId],
-        port_id: &PortId,
-        channel_id: &ChannelId,
-        counterparty: &Counterparty,
-        version: &Version,
+        _order: Order,
+        _connection_hops: &[ConnectionId],
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
+        _counterparty: &Counterparty,
+        _version: &Version,
     ) -> Result<Version, ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenInitValidate(OnChanOpenInitValidate {
-                order,
-                connection_hops: connection_hops.to_vec(),
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-                counterparty: counterparty.clone(),
-                version: version.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok(Version::empty())
     }
 
     fn on_chan_open_init_execute(
         &mut self,
-        order: Order,
-        connection_hops: &[ConnectionId],
-        port_id: &PortId,
-        channel_id: &ChannelId,
-        counterparty: &Counterparty,
-        version: &Version,
+        _order: Order,
+        _connection_hops: &[ConnectionId],
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
+        _counterparty: &Counterparty,
+        _version: &Version,
     ) -> Result<(ModuleExtras, Version), ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenInitExecute(OnChanOpenInitExecute {
-                order,
-                connection_hops: connection_hops.to_vec(),
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-                counterparty: counterparty.clone(),
-                version: version.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok((ModuleExtras::empty(), Version::empty()))
     }
 
     fn on_chan_open_try_validate(
         &self,
-        order: Order,
-        connection_hops: &[ConnectionId],
-        port_id: &PortId,
-        channel_id: &ChannelId,
-        counterparty: &Counterparty,
-        counterparty_version: &Version,
+        _order: Order,
+        _connection_hops: &[ConnectionId],
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
+        _counterparty: &Counterparty,
+        _counterparty_version: &Version,
     ) -> Result<Version, ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenTryValidate(OnChanOpenTryValidate {
-                order,
-                connection_hops: connection_hops.to_vec(),
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-                counterparty: counterparty.clone(),
-                counterparty_version: counterparty_version.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok(Version::empty())
     }
 
     fn on_chan_open_try_execute(
         &mut self,
-        order: Order,
-        connection_hops: &[ConnectionId],
-        port_id: &PortId,
-        channel_id: &ChannelId,
-        counterparty: &Counterparty,
-        counterparty_version: &Version,
+        _order: Order,
+        _connection_hops: &[ConnectionId],
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
+        _counterparty: &Counterparty,
+        _counterparty_version: &Version,
     ) -> Result<(ModuleExtras, Version), ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenTryExecute(OnChanOpenTryExecute {
-                order,
-                connection_hops: connection_hops.to_vec(),
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-                counterparty: counterparty.clone(),
-                counterparty_version: counterparty_version.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok((ModuleExtras::empty(), Version::empty()))
     }
 
     fn on_chan_open_ack_validate(
         &self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
-        counterparty_version: &Version,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
+        _counterparty_version: &Version,
     ) -> Result<(), ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenAckValidate(OnChanOpenAckValidate {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-                counterparty_version: counterparty_version.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
         Ok(())
     }
 
     fn on_chan_open_ack_execute(
         &mut self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
-        counterparty_version: &Version,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
+        _counterparty_version: &Version,
     ) -> Result<ModuleExtras, ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenAckExecute(OnChanOpenAckExecute {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-                counterparty_version: counterparty_version.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok(ModuleExtras::empty())
     }
 
     fn on_chan_open_confirm_validate(
         &self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
     ) -> Result<(), ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenConfirmValidate(OnChanOpenConfirmValidate {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
         Ok(())
     }
 
     fn on_chan_open_confirm_execute(
         &mut self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
     ) -> Result<ModuleExtras, ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanOpenConfirmExecute(OnChanOpenConfirmExecute {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok(ModuleExtras::empty())
     }
 
     fn on_chan_close_init_validate(
         &self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
     ) -> Result<(), ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanCloseInitValidate(OnChanCloseInitValidate {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
         Ok(())
     }
 
     fn on_chan_close_init_execute(
         &mut self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
     ) -> Result<ModuleExtras, ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanCloseInitExecute(OnChanCloseInitExecute {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok(ModuleExtras::empty())
     }
 
     fn on_chan_close_confirm_validate(
         &self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
     ) -> Result<(), ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanCloseConfirmValidate(OnChanCloseConfirmValidate {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
         Ok(())
     }
 
     fn on_chan_close_confirm_execute(
         &mut self,
-        port_id: &PortId,
-        channel_id: &ChannelId,
+        _port_id: &PortId,
+        _channel_id: &ChannelId,
     ) -> Result<ModuleExtras, ChannelError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnChanCloseConfirmExecute(OnChanCloseConfirmExecute {
-                port_id: port_id.clone(),
-                channel_id: channel_id.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })?;
-
-        let (_, return_data) = get_return_data().ok_or(ChannelError::Other {
-            description: "Return data missing".to_owned(),
-        })?;
-
-        bincode::deserialize(&return_data).map_err(|err| ChannelError::Other {
-            description: err.to_string(),
-        })
+        Ok(ModuleExtras::empty())
     }
 
     fn on_recv_packet_execute(
         &mut self,
-        packet: &Packet,
-        relayer: &Signer,
+        _packet: &Packet,
+        _relayer: &Signer,
     ) -> (ModuleExtras, Acknowledgement) {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnRecvPacketExecute(OnRecvPacketExecute {
-                packet: packet.clone(),
-                relayer: relayer.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        // TODO: Check if `.unwrap` makes sense
-        invoke(&instruction, &[]).unwrap();
-
-        let (_, return_data) = get_return_data().expect("Return data missing");
-
-        bincode::deserialize(&return_data).unwrap()
+        (ModuleExtras::empty(), vec![1].try_into().unwrap())
     }
 
     fn on_acknowledgement_packet_validate(
         &self,
-        packet: &Packet,
-        acknowledgement: &Acknowledgement,
-        relayer: &Signer,
+        _packet: &Packet,
+        _acknowledgement: &Acknowledgement,
+        _relayer: &Signer,
     ) -> Result<(), PacketError> {
-        let ibc_module_instruction = IbcModuleInstruction::OnAcknowledgementPacketValidate(
-            OnAcknowledgementPacketValidate {
-                packet: packet.clone(),
-                acknowledgement: acknowledgement.clone(),
-                relayer: relayer.clone(),
-            },
-        );
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|_err| {
-            // TODO: Fix the IBC library to include an error message
-            PacketError::ImplementationSpecific
-        })?;
-
         Ok(())
     }
 
     fn on_acknowledgement_packet_execute(
         &mut self,
-        packet: &Packet,
-        acknowledgement: &Acknowledgement,
-        relayer: &Signer,
+        _packet: &Packet,
+        _acknowledgement: &Acknowledgement,
+        _relayer: &Signer,
     ) -> (ModuleExtras, Result<(), PacketError>) {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnAcknowledgementPacketExecute(OnAcknowledgementPacketExecute {
-                packet: packet.clone(),
-                acknowledgement: acknowledgement.clone(),
-                relayer: relayer.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        let result = invoke(&instruction, &[]).map_err(|_err| {
-            // TODO: Fix the IBC library to include an error message
-            PacketError::ImplementationSpecific
-        });
-
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        (ModuleExtras::empty(), result)
+        (ModuleExtras::empty(), Ok(()))
     }
 
     fn on_timeout_packet_validate(
         &self,
-        packet: &Packet,
-        relayer: &Signer,
+        _packet: &Packet,
+        _relayer: &Signer,
     ) -> Result<(), PacketError> {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnTimeoutPacketValidate(OnTimeoutPacketValidate {
-                packet: packet.clone(),
-                relayer: relayer.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        invoke(&instruction, &[]).map_err(|_err| {
-            // TODO: Fix the IBC library to include an error message
-            PacketError::ImplementationSpecific
-        })?;
-
         Ok(())
     }
 
     fn on_timeout_packet_execute(
         &mut self,
-        packet: &Packet,
-        relayer: &Signer,
+        _packet: &Packet,
+        _relayer: &Signer,
     ) -> (ModuleExtras, Result<(), PacketError>) {
-        let ibc_module_instruction =
-            IbcModuleInstruction::OnTimeoutPacketExecute(OnTimeoutPacketExecute {
-                packet: packet.clone(),
-                relayer: relayer.clone(),
-            });
-        let instruction =
-            Instruction::new_with_bincode(self.program_id, &ibc_module_instruction, vec![]);
-
-        let result = invoke(&instruction, &[]).map_err(|_err| {
-            // TODO: Fix the IBC library to include an error message
-            PacketError::ImplementationSpecific
-        });
-
-        // TODO: Fix `ModuleExtras` deserialization upstream
-        (ModuleExtras::empty(), result)
+        (ModuleExtras::empty(), Ok(()))
     }
 }
 

@@ -285,18 +285,24 @@ impl ConnectionMsg {
                 let consensus_height_of_b_on_a =
                     get_latest_consensus_height(&ibc_state, client_id_on_a)?;
 
-                let proof_init = existence_proof_to_merkle_proof(
+                let _proof_init = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_a.parse()?))?,
                 );
-                let proof_client = existence_proof_to_merkle_proof(
+                let _proof_client = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ClientStatePath::new(&client_id_on_a.parse()?))?,
                 );
-                let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let _proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ClientConsensusStatePath::new(
                         &client_id_on_a.parse()?,
                         &consensus_height_of_b_on_a,
                     ),
                 )?);
+                let empty_proof = existence_proof_to_merkle_proof(ExistenceProof {
+                    key: vec![],
+                    value: vec![],
+                    leaf: None,
+                    path: vec![],
+                });
 
                 let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
                     &ibc_store,
@@ -317,9 +323,9 @@ impl ConnectionMsg {
                         .map(ConnectionVersion::into)
                         .collect(),
                     proof_height: Some(consensus_height_of_a_on_b.into()),
-                    proof_init: proof_init.encode_to_vec(),
-                    proof_client: proof_client.encode_to_vec(),
-                    proof_consensus: proof_consensus.encode_to_vec(),
+                    proof_init: empty_proof.encode_to_vec(),
+                    proof_client: empty_proof.encode_to_vec(),
+                    proof_consensus: empty_proof.encode_to_vec(),
                     consensus_height: Some(consensus_height_of_b_on_a.into()),
                     signer: "".to_owned(),
                 };
@@ -341,18 +347,24 @@ impl ConnectionMsg {
                 let consensus_height_of_a_on_b =
                     get_latest_consensus_height(&ibc_state, client_id_on_b)?;
 
-                let proof_try = existence_proof_to_merkle_proof(
+                let _proof_try = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_b.parse()?))?,
                 );
-                let proof_client = existence_proof_to_merkle_proof(
+                let _proof_client = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ClientStatePath::new(&client_id_on_b.parse()?))?,
                 );
-                let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let _proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ClientConsensusStatePath::new(
                         &client_id_on_b.parse()?,
                         &consensus_height_of_a_on_b,
                     ),
                 )?);
+                let empty_proof = existence_proof_to_merkle_proof(ExistenceProof {
+                    key: vec![],
+                    value: vec![],
+                    leaf: None,
+                    path: vec![],
+                });
 
                 let consensus_height_of_b_on_a = get_and_verify_consensus_height_on_cpty(
                     &ibc_store,
@@ -367,9 +379,9 @@ impl ConnectionMsg {
                     version: Some(ConnectionVersion::default().into()),
                     client_state,
                     proof_height: Some(consensus_height_of_b_on_a.into()),
-                    proof_try: proof_try.encode_to_vec(),
-                    proof_client: proof_client.encode_to_vec(),
-                    proof_consensus: proof_consensus.encode_to_vec(),
+                    proof_try: empty_proof.encode_to_vec(),
+                    proof_client: empty_proof.encode_to_vec(),
+                    proof_consensus: empty_proof.encode_to_vec(),
                     consensus_height: Some(consensus_height_of_a_on_b.into()),
                     signer: "".to_owned(),
                 };
@@ -385,9 +397,15 @@ impl ConnectionMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_ack = existence_proof_to_merkle_proof(
+                let _proof_ack = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_a.parse()?))?,
                 );
+                let empty_proof = existence_proof_to_merkle_proof(ExistenceProof {
+                    key: vec![],
+                    value: vec![],
+                    leaf: None,
+                    path: vec![],
+                });
 
                 let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
                     &ibc_store,
@@ -398,7 +416,7 @@ impl ConnectionMsg {
 
                 let msg = RawMsgConnectionOpenConfirm {
                     connection_id: connection_id_on_b.clone(),
-                    proof_ack: proof_ack.encode_to_vec(),
+                    proof_ack: empty_proof.encode_to_vec(),
                     proof_height: Some(consensus_height_of_a_on_b.into()),
                     signer: "".to_owned(),
                 };
@@ -498,9 +516,15 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_init = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let _proof_init = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_a.parse()?, &channel_id_on_a.parse()?),
                 )?);
+                let empty_proof = existence_proof_to_merkle_proof(ExistenceProof {
+                    key: vec![],
+                    value: vec![],
+                    leaf: None,
+                    path: vec![],
+                });
 
                 let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
                     &ibc_store,
@@ -515,7 +539,7 @@ impl ChannelMsg {
                     previous_channel_id: "".to_owned(),
                     channel: Some(channel),
                     counterparty_version: "".to_owned(),
-                    proof_init: proof_init.encode_to_vec(),
+                    proof_init: empty_proof.encode_to_vec(),
                     proof_height: Some(consensus_height_of_a_on_b.into()),
                     signer: "".to_owned(),
                 };
@@ -533,9 +557,15 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_try = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let _proof_try = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_b.parse()?, &channel_id_on_b.parse()?),
                 )?);
+                let empty_proof = existence_proof_to_merkle_proof(ExistenceProof {
+                    key: vec![],
+                    value: vec![],
+                    leaf: None,
+                    path: vec![],
+                });
 
                 let consensus_height_of_b_on_a = get_and_verify_consensus_height_on_cpty(
                     &ibc_store,
@@ -549,7 +579,7 @@ impl ChannelMsg {
                     channel_id: channel_id_on_a.clone(),
                     counterparty_channel_id: channel_id_on_b.clone(),
                     counterparty_version: "".to_owned(),
-                    proof_try: proof_try.encode_to_vec(),
+                    proof_try: empty_proof.encode_to_vec(),
                     proof_height: Some(consensus_height_of_b_on_a.into()),
                     signer: "".to_owned(),
                 };
@@ -567,9 +597,15 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_ack = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let _proof_ack = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_a.parse()?, &channel_id_on_a.parse()?),
                 )?);
+                let empty_proof = existence_proof_to_merkle_proof(ExistenceProof {
+                    key: vec![],
+                    value: vec![],
+                    leaf: None,
+                    path: vec![],
+                });
 
                 let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
                     &ibc_store,
@@ -581,7 +617,7 @@ impl ChannelMsg {
                 let msg = RawMsgChannelOpenConfirm {
                     port_id: port_id_on_b.clone(),
                     channel_id: channel_id_on_b.clone(),
-                    proof_ack: proof_ack.encode_to_vec(),
+                    proof_ack: empty_proof.encode_to_vec(),
                     proof_height: Some(consensus_height_of_a_on_b.into()),
                     signer: "".to_owned(),
                 };

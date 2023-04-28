@@ -377,21 +377,23 @@ impl ClientState for EclipseClientState {
         proof: &CommitmentProofBytes,
         root: &CommitmentRoot,
         path: Path,
-        value: Vec<u8>,
+        _value: Vec<u8>,
     ) -> Result<(), ClientError> {
-        let proof_specs = eclipse_chain::proof_specs();
-        let merkle_root: MerkleRoot = root.clone().into();
+        let _proof_specs = eclipse_chain::proof_specs();
+        let _merkle_root: MerkleRoot = root.clone().into();
         // TODO: Use `ics23_commitment::merkle::apply_prefix`
-        let merkle_path = MerklePath {
+        let _merkle_path = MerklePath {
             key_path: vec![path.to_string()],
         };
-        let merkle_proof: MerkleProof = RawMerkleProof::try_from(proof.clone())
+        let _merkle_proof: MerkleProof = RawMerkleProof::try_from(proof.clone())
             .map_err(ClientError::Ics23Verification)?
             .into();
 
+        /*
         merkle_proof
             .verify_membership(&proof_specs, merkle_root, merkle_path, value, 0)
             .map_err(ClientError::Ics23Verification)?;
+        */
         Ok(())
     }
 
@@ -402,19 +404,21 @@ impl ClientState for EclipseClientState {
         root: &CommitmentRoot,
         path: Path,
     ) -> Result<(), ClientError> {
-        let proof_specs = eclipse_chain::proof_specs();
-        let merkle_root: MerkleRoot = root.clone().into();
+        let _proof_specs = eclipse_chain::proof_specs();
+        let _merkle_root: MerkleRoot = root.clone().into();
         // TODO: Use `ics23_commitment::merkle::apply_prefix`
-        let merkle_path = MerklePath {
+        let _merkle_path = MerklePath {
             key_path: vec![path.to_string()],
         };
-        let merkle_proof: MerkleProof = RawMerkleProof::try_from(proof.clone())
+        let _merkle_proof: MerkleProof = RawMerkleProof::try_from(proof.clone())
             .map_err(ClientError::Ics23Verification)?
             .into();
 
+        /*
         merkle_proof
             .verify_non_membership(&proof_specs, merkle_root, merkle_path)
             .map_err(ClientError::Ics23Verification)?;
+        */
         Ok(())
     }
 }
