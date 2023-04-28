@@ -399,6 +399,7 @@ pub(crate) struct Args {
 pub(crate) async fn run(Args { endpoint, kind }: Args) -> anyhow::Result<()> {
     let rpc_client = RpcClient::new(endpoint);
 
+    eprintln!("Generating IBC tx: {kind:?}");
     match kind {
         MsgKind::Client(msg) => {
             msg.generate(&rpc_client).await?;

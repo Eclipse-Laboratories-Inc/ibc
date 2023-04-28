@@ -326,6 +326,7 @@ pub(crate) async fn run(
         .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?;
     let rpc_client = RpcClient::new(endpoint);
 
+    eprintln!("Submitting IBC tx: {kind:?}");
     let instruction = Instruction::new_with_bytes(
         eclipse_ibc_program::id(),
         &kind.instruction_data(payer.pubkey())?,
