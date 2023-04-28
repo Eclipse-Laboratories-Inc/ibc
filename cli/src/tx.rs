@@ -30,6 +30,7 @@ use {
             },
         },
     },
+    log::info,
     serde::de::DeserializeOwned,
     solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig},
     solana_sdk::{
@@ -42,7 +43,7 @@ use {
         transaction::Transaction,
     },
     std::{
-        io::{self, BufReader, Write as _},
+        io::{self, BufReader},
         path::PathBuf,
     },
 };
@@ -326,7 +327,7 @@ pub(crate) async fn run(
         .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?;
     let rpc_client = RpcClient::new(endpoint);
 
-    eprintln!("Submitting IBC tx: {kind:?}");
+    info!("Submitting IBC tx: {kind:?}");
     let instruction = Instruction::new_with_bytes(
         eclipse_ibc_program::id(),
         &kind.instruction_data(payer.pubkey())?,
@@ -345,7 +346,7 @@ pub(crate) async fn run(
         )
         .await?;
 
-    writeln!(io::stdout(), "Submitted IBC tx: {sig}")?;
+    info!("Submitted IBC tx: {sig}");
 
     Ok(())
 }

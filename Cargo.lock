@@ -1368,11 +1368,13 @@ dependencies = [
  "eclipse-ibc-light-client",
  "eclipse-ibc-program",
  "eclipse-ibc-state",
+ "env_logger 0.10.0",
  "hex",
  "ibc",
  "ibc-proto",
  "ics23",
  "jmt",
+ "log",
  "prost",
  "serde",
  "serde_json",
@@ -1599,6 +1601,19 @@ checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
 dependencies = [
  "atty",
  "humantime",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
+dependencies = [
+ "humantime",
+ "is-terminal",
  "log",
  "regex",
  "termcolor",
@@ -4164,7 +4179,7 @@ name = "solana-logger"
 version = "1.15.2"
 source = "git+https://github.com/Eclipse-Laboratories-Inc/solar-eclipse?branch=eclipse/v1.15.2#cd4a6952b76b65eec90f09cfc3b68066e2fda7d0"
 dependencies = [
- "env_logger",
+ "env_logger 0.9.3",
  "lazy_static",
  "log",
 ]

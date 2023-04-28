@@ -34,11 +34,13 @@ eclipse-ibc-light-client = { path = "light-client" }
 eclipse-ibc-program = { path = "program" }
 eclipse-ibc-proto = { path = "proto" }
 eclipse-ibc-state = { path = "state" }
+env_logger = "0.10.0"
 hex = "0.4.3"
 ibc = "0.38.0"
 ibc-proto = "0.26.0"
 ics23 = "0.9.0"
 jmt = "=0.4.0"
+log = "0.4.17"
 prost = "0.11.9"
 prost-build = "0.11.9"
 prost-types = "0.11.9"
