@@ -8,6 +8,7 @@ CHAIN_A=ibc-a
 CHAIN_B=ibc-b
 CLIENT_ID=xx-eclipse-0
 CONNECTION_ID=connection-0
+export RUST_LOG=info
 
 : <<'END_COMMENT'
 END_COMMENT
