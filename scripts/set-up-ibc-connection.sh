@@ -26,22 +26,22 @@ END_COMMENT
 "$CLI" generate --endpoint "$ENDPOINT_A" client update "$CLIENT_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_B" client update
 
-"$CLI" generate --endpoint "$ENDPOINT_B" connection open-init "$CLIENT_ID" "$CLIENT_ID" \
+"$CLI" generate --endpoint "$ENDPOINT_B" --cpty-endpoint "$ENDPOINT_A" connection open-init "$CLIENT_ID" "$CLIENT_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_A" connection open-init
 "$CLI" generate --endpoint "$ENDPOINT_A" client update "$CLIENT_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_B" client update
 
-"$CLI" generate --endpoint "$ENDPOINT_A" connection open-try "$CLIENT_ID" "$CLIENT_ID" "$CONNECTION_ID" \
+"$CLI" generate --endpoint "$ENDPOINT_A" --cpty-endpoint "$ENDPOINT_B" connection open-try "$CLIENT_ID" "$CLIENT_ID" "$CONNECTION_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_B" connection open-try
 "$CLI" generate --endpoint "$ENDPOINT_B" client update "$CLIENT_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_A" client update
 
-"$CLI" generate --endpoint "$ENDPOINT_B" connection open-ack "$CONNECTION_ID" "$CLIENT_ID" "$CONNECTION_ID" \
+"$CLI" generate --endpoint "$ENDPOINT_B" --cpty-endpoint "$ENDPOINT_A" connection open-ack "$CLIENT_ID" "$CONNECTION_ID" "$CLIENT_ID" "$CONNECTION_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_A" connection open-ack
 "$CLI" generate --endpoint "$ENDPOINT_A" client update "$CLIENT_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_B" client update
 
-"$CLI" generate --endpoint "$ENDPOINT_A" connection open-confirm "$CONNECTION_ID" "$CONNECTION_ID" \
+"$CLI" generate --endpoint "$ENDPOINT_A" --cpty-endpoint "$ENDPOINT_B" connection open-confirm "$CLIENT_ID" "$CONNECTION_ID" "$CONNECTION_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_B" connection open-confirm
 "$CLI" generate --endpoint "$ENDPOINT_B" client update "$CLIENT_ID" \
   | "$CLI" tx --endpoint "$ENDPOINT_A" client update
