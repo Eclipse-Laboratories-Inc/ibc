@@ -33,7 +33,7 @@ const CLIENT_TYPE: &str = "xx-eclipse";
 pub const ECLIPSE_CLIENT_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ClientState";
 
 fn client_type() -> ClientType {
-    ClientType::new(CLIENT_TYPE.to_owned())
+    ClientType::new(CLIENT_TYPE.to_owned()).unwrap()
 }
 
 fn client_err_from_context(err: ContextError) -> ClientError {
@@ -416,5 +416,15 @@ impl ClientState for EclipseClientState {
             .verify_non_membership(&proof_specs, merkle_root, merkle_path)
             .map_err(ClientError::Ics23Verification)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn print_client_type() {
+        assert_eq!(CLIENT_TYPE, client_type().as_str());
     }
 }

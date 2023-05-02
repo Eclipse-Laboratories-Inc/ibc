@@ -100,7 +100,7 @@ impl KnownProto for ClientType {
     }
 
     fn from_raw(raw: Self::Raw) -> anyhow::Result<Self> {
-        Ok(Self::new(raw))
+        Ok(Self::new(raw)?)
     }
 }
 

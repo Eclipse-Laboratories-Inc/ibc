@@ -1,7 +1,10 @@
 use {
     crate::module_instruction::*,
     anyhow::anyhow,
-    core::ops::Bound::{Excluded, Unbounded},
+    core::{
+        ops::Bound::{Excluded, Unbounded},
+        str::FromStr,
+    },
     eclipse_ibc_light_client::{eclipse_chain, EclipseConsensusState},
     eclipse_ibc_state::{
         decode_client_state, decode_consensus_state, encode_client_state, encode_consensus_state,
@@ -663,6 +666,13 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 
     fn max_expected_time_per_block(&self) -> Duration {
         self.max_expected_time_per_block
+    }
+
+    fn validate_message_signer(&self, signer: &Signer) -> Result<(), ContextError> {
+        Pubkey::from_str(signer.as_ref()).map_err(|err| ClientError::InvalidSigner {
+            reason: err.to_string(),
+        })?;
+        Ok(())
     }
 }
 

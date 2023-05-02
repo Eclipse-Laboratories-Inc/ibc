@@ -265,10 +265,7 @@ impl TxKind {
     }
 
     fn instruction_data(&self, payer_key: Pubkey) -> anyhow::Result<Vec<u8>> {
-        let signer = payer_key
-            .to_string()
-            .parse()
-            .expect("Pubkey should never be empty");
+        let signer = payer_key.to_string().into();
         Ok(self.encode_as_any(signer)?.encode())
     }
 
