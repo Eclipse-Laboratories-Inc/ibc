@@ -55,36 +55,37 @@ impl<'a> IbcState<'a> {
     where
         K: KnownPath,
     {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
-        if let Some(owned_value) = self.pending_changes.get(&key_hash) {
-            return owned_value
-                .as_ref()
-                .map(|value| KnownProto::decode(&**value))
-                .transpose();
-        }
-
-        self.state_jmt
-            .get(key_hash, self.version)?
-            .map(|owned_value| KnownProto::decode(&*owned_value))
-            .transpose()
+        self.get_with_decode(key, |value| KnownProto::decode(value))
     }
 
     pub fn get_raw<K>(&self, key: &K) -> anyhow::Result<Option<<K::Value as KnownProto>::Raw>>
     where
         K: KnownPath,
     {
+        self.get_with_decode(key, |value| prost::Message::decode(value))
+    }
+
+    fn get_with_decode<K, V, E>(
+        &self,
+        key: &K,
+        decode: impl FnOnce(&[u8]) -> Result<V, E>,
+    ) -> anyhow::Result<Option<V>>
+    where
+        K: KnownPath,
+        anyhow::Error: From<E>,
+    {
         let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
         if let Some(owned_value) = self.pending_changes.get(&key_hash) {
             return Ok(owned_value
                 .as_ref()
-                .map(|value| prost::Message::decode(&**value))
+                .map(|value| decode(value))
                 .transpose()?);
         }
 
         Ok(self
             .state_jmt
             .get(key_hash, self.version)?
-            .map(|owned_value| prost::Message::decode(&*owned_value))
+            .map(|owned_value| decode(&owned_value))
             .transpose()?)
     }
 
