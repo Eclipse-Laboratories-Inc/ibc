@@ -6,6 +6,7 @@ use {
     eclipse_ibc_light_client::eclipse_chain,
     eclipse_ibc_state::{internal_path::ConsensusHeightsPath, IbcAccountData, IbcState, IbcStore},
     ibc::core::{
+        ics02_client::height::Height,
         ics03_connection::version::{get_compatible_versions, Version as ConnectionVersion},
         ics24_host::path::{
             ChannelEndPath, ClientConsensusStatePath, ClientStatePath, ConnectionPath,
@@ -85,6 +86,37 @@ fn existence_proof_to_merkle_proof(existence_proof: ExistenceProof) -> RawMerkle
     RawMerkleProof {
         proofs: vec![ibc_commitment_proof],
     }
+}
+
+async fn get_and_verify_consensus_height_on_cpty(
+    ibc_store: &IbcStore,
+    cpty_rpc_client: &RpcClient,
+    client_id_on_cpty: &str,
+) -> anyhow::Result<Height> {
+    let ibc_latest_version = ibc_store
+        .read()?
+        .latest_version()
+        .ok_or_else(|| anyhow!("No IBC state versions found"))?;
+    let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
+
+    let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
+    let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
+
+    let consensus_height_on_cpty = *cpty_ibc_state
+        .get(&ConsensusHeightsPath(client_id_on_cpty.parse()?))?
+        .ok_or_else(|| anyhow!("Consensus heights not found for client ID {client_id_on_cpty}"))?
+        .heights
+        .last()
+        .ok_or_else(|| anyhow!("No consensus heights found for client ID {client_id_on_cpty}"))?;
+
+    if consensus_height_on_cpty < ibc_latest_height {
+        bail!(
+            "Height of chain (client ID {client_id_on_cpty}) on cpty chain is not recent enough; \
+               {consensus_height_on_cpty} < {ibc_latest_height}"
+        );
+    }
+
+    Ok(consensus_height_on_cpty)
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -244,12 +276,6 @@ impl ConnectionMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let ibc_latest_version = ibc_store
-                    .read()?
-                    .latest_version()
-                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
-                let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
-
                 let client_state =
                     ibc_state.get_raw(&ClientStatePath::new(&client_id_on_a.parse()?))?;
 
@@ -277,23 +303,12 @@ impl ConnectionMsg {
                     ),
                 )?);
 
-                let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
-                let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
-
-                let consensus_height_of_a_on_b = *cpty_ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_b.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_b}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_b}")
-                    })?;
-
-                if consensus_height_of_a_on_b < ibc_latest_height {
-                    bail!("Height of chain A on chain B is not recent enough; {consensus_height_of_a_on_b} < {ibc_latest_height}");
-                }
+                let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
+                    &ibc_store,
+                    cpty_rpc_client,
+                    client_id_on_b,
+                )
+                .await?;
 
                 #[allow(deprecated)]
                 let msg = RawMsgConnectionOpenTry {
@@ -326,12 +341,6 @@ impl ConnectionMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let ibc_latest_version = ibc_store
-                    .read()?
-                    .latest_version()
-                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
-                let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
-
                 let client_state =
                     ibc_state.get_raw(&ClientStatePath::new(&client_id_on_b.parse()?))?;
 
@@ -359,23 +368,12 @@ impl ConnectionMsg {
                     ),
                 )?);
 
-                let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
-                let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
-
-                let consensus_height_of_b_on_a = *cpty_ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_a.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_a}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_a}")
-                    })?;
-
-                if consensus_height_of_b_on_a < ibc_latest_height {
-                    bail!("Height of chain B on chain A is not recent enough; {consensus_height_of_b_on_a} < {ibc_latest_height}");
-                }
+                let consensus_height_of_b_on_a = get_and_verify_consensus_height_on_cpty(
+                    &ibc_store,
+                    cpty_rpc_client,
+                    client_id_on_a,
+                )
+                .await?;
 
                 let msg = RawMsgConnectionOpenAck {
                     connection_id: connection_id_on_a.clone(),
@@ -401,33 +399,16 @@ impl ConnectionMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let ibc_latest_version = ibc_store
-                    .read()?
-                    .latest_version()
-                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
-                let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
-
                 let proof_ack = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_a.parse()?))?,
                 );
 
-                let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
-                let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
-
-                let consensus_height_of_a_on_b = *cpty_ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_b.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_b}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_b}")
-                    })?;
-
-                if consensus_height_of_a_on_b < ibc_latest_height {
-                    bail!("Height of chain A on chain B is not recent enough; {consensus_height_of_a_on_b} < {ibc_latest_height}");
-                }
+                let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
+                    &ibc_store,
+                    cpty_rpc_client,
+                    client_id_on_b,
+                )
+                .await?;
 
                 let msg = RawMsgConnectionOpenConfirm {
                     connection_id: connection_id_on_b.clone(),
@@ -531,33 +512,16 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let ibc_latest_version = ibc_store
-                    .read()?
-                    .latest_version()
-                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
-                let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
-
                 let proof_init = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_a.parse()?, &channel_id_on_a.parse()?),
                 )?);
 
-                let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
-                let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
-
-                let consensus_height_of_a_on_b = *cpty_ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_b.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_b}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_b}")
-                    })?;
-
-                if consensus_height_of_a_on_b < ibc_latest_height {
-                    bail!("Height of chain A on chain B is not recent enough; {consensus_height_of_a_on_b} < {ibc_latest_height}");
-                }
+                let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
+                    &ibc_store,
+                    cpty_rpc_client,
+                    client_id_on_b,
+                )
+                .await?;
 
                 #[allow(deprecated)]
                 let msg = RawMsgChannelOpenTry {
@@ -583,33 +547,16 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let ibc_latest_version = ibc_store
-                    .read()?
-                    .latest_version()
-                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
-                let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
-
                 let proof_try = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_b.parse()?, &channel_id_on_b.parse()?),
                 )?);
 
-                let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
-                let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
-
-                let consensus_height_of_b_on_a = *cpty_ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_a.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_a}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_a}")
-                    })?;
-
-                if consensus_height_of_b_on_a < ibc_latest_height {
-                    bail!("Height of chain B on chain A is not recent enough; {consensus_height_of_b_on_a} < {ibc_latest_height}");
-                }
+                let consensus_height_of_b_on_a = get_and_verify_consensus_height_on_cpty(
+                    &ibc_store,
+                    cpty_rpc_client,
+                    client_id_on_a,
+                )
+                .await?;
 
                 let msg = RawMsgChannelOpenAck {
                     port_id: port_id_on_a.clone(),
@@ -634,33 +581,16 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let ibc_latest_version = ibc_store
-                    .read()?
-                    .latest_version()
-                    .ok_or_else(|| anyhow!("No IBC state versions found"))?;
-                let ibc_latest_height = eclipse_chain::height_of_slot(ibc_latest_version)?;
-
                 let proof_ack = existence_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_a.parse()?, &channel_id_on_a.parse()?),
                 )?);
 
-                let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
-                let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
-
-                let consensus_height_of_a_on_b = *cpty_ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_b.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_b}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_b}")
-                    })?;
-
-                if consensus_height_of_a_on_b < ibc_latest_height {
-                    bail!("Height of chain A on chain B is not recent enough; {consensus_height_of_a_on_b} < {ibc_latest_height}");
-                }
+                let consensus_height_of_a_on_b = get_and_verify_consensus_height_on_cpty(
+                    &ibc_store,
+                    cpty_rpc_client,
+                    client_id_on_b,
+                )
+                .await?;
 
                 let msg = RawMsgChannelOpenConfirm {
                     port_id: port_id_on_b.clone(),
