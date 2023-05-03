@@ -88,6 +88,15 @@ fn existence_proof_to_merkle_proof(existence_proof: ExistenceProof) -> RawMerkle
     }
 }
 
+fn get_latest_consensus_height(ibc_state: &IbcState, client_id: &str) -> anyhow::Result<Height> {
+    Ok(*ibc_state
+        .get(&ConsensusHeightsPath(client_id.parse()?))?
+        .ok_or_else(|| anyhow!("Consensus heights not found for client ID {client_id}"))?
+        .heights
+        .last()
+        .ok_or_else(|| anyhow!("No consensus heights found for client ID {client_id}"))?)
+}
+
 async fn get_and_verify_consensus_height_on_cpty(
     ibc_store: &IbcStore,
     cpty_rpc_client: &RpcClient,
@@ -102,12 +111,7 @@ async fn get_and_verify_consensus_height_on_cpty(
     let cpty_ibc_store = get_ibc_store(cpty_rpc_client).await?;
     let cpty_ibc_state = get_ibc_state(&cpty_ibc_store)?;
 
-    let consensus_height_on_cpty = *cpty_ibc_state
-        .get(&ConsensusHeightsPath(client_id_on_cpty.parse()?))?
-        .ok_or_else(|| anyhow!("Consensus heights not found for client ID {client_id_on_cpty}"))?
-        .heights
-        .last()
-        .ok_or_else(|| anyhow!("No consensus heights found for client ID {client_id_on_cpty}"))?;
+    let consensus_height_on_cpty = get_latest_consensus_height(&cpty_ibc_state, client_id_on_cpty)?;
 
     if consensus_height_on_cpty < ibc_latest_height {
         bail!(
@@ -278,17 +282,8 @@ impl ConnectionMsg {
 
                 let client_state =
                     ibc_state.get_raw(&ClientStatePath::new(&client_id_on_a.parse()?))?;
-
-                let consensus_height_of_b_on_a = *ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_a.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_a}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_a}")
-                    })?;
+                let consensus_height_of_b_on_a =
+                    get_latest_consensus_height(&ibc_state, client_id_on_a)?;
 
                 let proof_init = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_a.parse()?))?,
@@ -343,17 +338,8 @@ impl ConnectionMsg {
 
                 let client_state =
                     ibc_state.get_raw(&ClientStatePath::new(&client_id_on_b.parse()?))?;
-
-                let consensus_height_of_a_on_b = *ibc_state
-                    .get(&ConsensusHeightsPath(client_id_on_b.parse()?))?
-                    .ok_or_else(|| {
-                        anyhow!("Consensus heights not found for client ID {client_id_on_b}")
-                    })?
-                    .heights
-                    .last()
-                    .ok_or_else(|| {
-                        anyhow!("No consensus heights found for client ID {client_id_on_b}")
-                    })?;
+                let consensus_height_of_a_on_b =
+                    get_latest_consensus_height(&ibc_state, client_id_on_b)?;
 
                 let proof_try = existence_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_b.parse()?))?,
