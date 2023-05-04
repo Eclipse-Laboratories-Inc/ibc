@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CLI=$(dirname "$0")/../target/debug/eclipse-ibc-cli
+CLI=$(dirname "$0")/../target/debug/eclipse-ibc
 ENDPOINT_A=http://127.0.0.1:8111
 ENDPOINT_B=http://127.0.0.1:9111
 CHAIN_A=ibc-a
