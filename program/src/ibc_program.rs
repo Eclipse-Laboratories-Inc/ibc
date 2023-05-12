@@ -9,7 +9,7 @@ use {
     },
     eclipse_ibc_known_proto::KnownProto,
     eclipse_ibc_state::{internal_path::StateInitializedPath, IbcAccountData, IbcState},
-    ibc::core::handler::dispatch,
+    ibc::core::dispatch,
     ibc_proto::google::protobuf,
     solana_program_runtime::{
         ic_msg, invoke_context::InvokeContext, sysvar_cache::get_sysvar_with_account_check,

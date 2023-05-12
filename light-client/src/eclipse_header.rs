@@ -2,11 +2,9 @@ use {
     crate::{error::Error, EclipseConsensusState},
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     eclipse_ibc_proto::eclipse::ibc::chain::v1::Header as RawEclipseHeader,
-    ibc::{
-        core::{
-            ics02_client::{error::ClientError, header::Header, height::Height},
-            ics23_commitment::commitment::CommitmentRoot,
-        },
+    ibc::core::{
+        ics02_client::{error::ClientError, header::Header, height::Height},
+        ics23_commitment::commitment::CommitmentRoot,
         timestamp::Timestamp,
     },
     ibc_proto::{google::protobuf, protobuf::Protobuf},

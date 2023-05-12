@@ -2,9 +2,8 @@ use {
     derive_more::Display,
     eclipse_ibc_extra_types::{AllModuleIds, ConsensusHeights},
     eclipse_ibc_known_path::KnownPath,
-    ibc::{
-        core::{ics02_client::height::Height, ics24_host::identifier::ClientId},
-        timestamp::Timestamp,
+    ibc::core::{
+        ics02_client::height::Height, ics24_host::identifier::ClientId, timestamp::Timestamp,
     },
 };
 

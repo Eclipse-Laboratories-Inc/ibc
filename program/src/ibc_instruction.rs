@@ -1,13 +1,10 @@
 use {
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
-    ibc::{
-        core::{
-            ics02_client::msgs::ClientMsg,
-            ics03_connection::msgs::ConnectionMsg,
-            ics04_channel::msgs::{ChannelMsg, PacketMsg},
-            ics26_routing::{error::RouterError, msgs::MsgEnvelope},
-        },
-        tx_msg::Msg as _,
+    ibc::core::{
+        ics02_client::msgs::ClientMsg,
+        ics03_connection::msgs::ConnectionMsg,
+        ics04_channel::msgs::{ChannelMsg, PacketMsg},
+        Msg as _, MsgEnvelope, RouterError,
     },
     ibc_proto::google::protobuf,
     thiserror::Error,

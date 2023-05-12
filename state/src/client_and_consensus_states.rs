@@ -9,18 +9,14 @@ use {
     },
     ibc::{
         clients::ics07_tendermint::{
-            client_state::{
-                ClientState as TendermintClientState, TENDERMINT_CLIENT_STATE_TYPE_URL,
-            },
-            consensus_state::{
-                ConsensusState as TendermintConsensusState, TENDERMINT_CONSENSUS_STATE_TYPE_URL,
-            },
+            client_state::ClientState as TendermintClientState,
+            consensus_state::ConsensusState as TendermintConsensusState,
         },
         core::{
-            context::ContextError,
             ics02_client::{
                 client_state::ClientState, consensus_state::ConsensusState, error::ClientError,
             },
+            ContextError,
         },
     },
     ibc_proto::{
@@ -31,6 +27,9 @@ use {
         protobuf::Protobuf,
     },
 };
+
+const TENDERMINT_CLIENT_STATE_TYPE_URL: &str = "/ibc.lightclients.tendermint.v1.ClientState";
+const TENDERMINT_CONSENSUS_STATE_TYPE_URL: &str = "/ibc.lightclients.tendermint.v1.ConsensusState";
 
 pub fn decode_client_state(
     client_state: protobuf::Any,

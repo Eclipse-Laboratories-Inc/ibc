@@ -36,7 +36,7 @@ eclipse-ibc-proto = { path = "proto" }
 eclipse-ibc-state = { path = "state" }
 env_logger = "0.10.0"
 hex = "0.4.3"
-ibc = "0.39.0"
+ibc = "0.40.0"
 ibc-proto = "0.29.0"
 ics23 = "0.9.0"
 jmt = "=0.4.0"

@@ -97,7 +97,7 @@ enum ChannelTx {
 }
 
 impl ChannelTx {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
+    fn encode_as_any(&self, signer: ibc::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
             Self::OpenInit => stdin_json_to_any::<RawMsgChannelOpenInit>(
                 "/ibc.core.channel.v1.MsgChannelOpenInit",
@@ -148,7 +148,7 @@ enum ClientTx {
 }
 
 impl ClientTx {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
+    fn encode_as_any(&self, signer: ibc::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
             Self::Create => stdin_json_to_any::<RawMsgCreateClient>(
                 "/ibc.core.client.v1.MsgCreateClient",
@@ -188,7 +188,7 @@ enum ConnectionTx {
 }
 
 impl ConnectionTx {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
+    fn encode_as_any(&self, signer: ibc::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
             Self::OpenInit => stdin_json_to_any::<RawMsgConnectionOpenInit>(
                 "/ibc.core.connection.v1.MsgConnectionOpenInit",
@@ -254,7 +254,7 @@ enum TxKind {
 }
 
 impl TxKind {
-    fn encode_as_any(&self, signer: ibc::signer::Signer) -> anyhow::Result<protobuf::Any> {
+    fn encode_as_any(&self, signer: ibc::Signer) -> anyhow::Result<protobuf::Any> {
         match self {
             Self::Admin(tx) => Ok(tx.encode_as_any()),
             Self::Channel(tx) => tx.encode_as_any(signer),

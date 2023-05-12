@@ -4,7 +4,6 @@ use {
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     eclipse_ibc_proto::eclipse::ibc::chain::v1::ClientState as RawEclipseClientState,
     ibc::core::{
-        context::{ContextError, ExecutionContext, ValidationContext},
         ics02_client::{
             client_state::{ClientState, UpdateKind, UpdatedState},
             client_type::ClientType,
@@ -20,6 +19,7 @@ use {
             identifier::{ChainId, ClientId},
             path::{ClientConsensusStatePath, ClientStatePath, ClientUpgradePath, Path},
         },
+        ContextError, ExecutionContext, ValidationContext,
     },
     ibc_proto::{
         google::protobuf,

@@ -3,11 +3,8 @@ use {
         applications::transfer::{
             amount::Amount, coin::PrefixedCoin, denom::PrefixedDenom, error::TokenTransferError,
         },
-        core::ics24_host::{
-            error::ValidationError,
-            identifier::{ChannelId, PortId},
-        },
-        signer::Signer,
+        core::ics24_host::identifier::{ChannelId, PortId},
+        Signer,
     },
     serde::{Deserialize, Serialize},
     std::collections::{BTreeMap, HashMap},
@@ -75,10 +72,8 @@ impl Ics20Module {
         Ok(self
             .port
             .as_ref()
-            .ok_or_else(|| TokenTransferError::InvalidPortId {
-                context: String::new(),
-                validation_error: ValidationError::Empty,
-            })?
+            // TODO: Fix this by finding a better error
+            .ok_or_else(|| TokenTransferError::InvalidToken)?
             .clone())
     }
 

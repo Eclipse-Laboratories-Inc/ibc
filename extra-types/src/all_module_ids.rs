@@ -1,10 +1,7 @@
 use {
-    anyhow::anyhow,
-    core::str::FromStr,
-    eclipse_ibc_known_proto::KnownProtoWithFrom,
+    core::convert::Infallible, eclipse_ibc_known_proto::KnownProtoWithFrom,
     eclipse_ibc_proto::eclipse::ibc::client::v1::AllModuleIds as RawAllModuleIds,
-    ibc::core::ics26_routing::context::{InvalidModuleId, ModuleId},
-    std::collections::HashSet,
+    ibc::core::router::ModuleId, std::collections::HashSet,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -21,17 +18,11 @@ impl From<AllModuleIds> for RawAllModuleIds {
 }
 
 impl TryFrom<RawAllModuleIds> for AllModuleIds {
-    type Error = anyhow::Error;
+    type Error = Infallible;
 
     fn try_from(RawAllModuleIds { modules }: RawAllModuleIds) -> Result<Self, Self::Error> {
         Ok(Self {
-            modules: modules
-                .iter()
-                .map(|raw_module| {
-                    ModuleId::from_str(raw_module)
-                        .map_err(|InvalidModuleId| anyhow!("Invalid module ID: {raw_module}"))
-                })
-                .collect::<Result<_, _>>()?,
+            modules: modules.into_iter().map(ModuleId::new).collect(),
         })
     }
 }

@@ -1,14 +1,10 @@
 use {
-    anyhow::{anyhow, bail, Context as _},
+    anyhow::{bail, Context as _},
     bytes::Buf,
     ibc::{
         clients::ics07_tendermint::{
-            client_state::{
-                ClientState as TendermintClientState, TENDERMINT_CLIENT_STATE_TYPE_URL,
-            },
-            consensus_state::{
-                ConsensusState as TendermintConsensusState, TENDERMINT_CONSENSUS_STATE_TYPE_URL,
-            },
+            client_state::ClientState as TendermintClientState,
+            consensus_state::ConsensusState as TendermintConsensusState,
         },
         core::{
             ics02_client::{client_type::ClientType, height::Height},
@@ -19,7 +15,7 @@ use {
                 packet::{Receipt, Sequence},
             },
             ics24_host::identifier::ConnectionId,
-            ics26_routing::context::{InvalidModuleId, ModuleId},
+            router::ModuleId,
         },
     },
     ibc_proto::{
@@ -31,6 +27,9 @@ use {
     },
     prost::Message as _,
 };
+
+const TENDERMINT_CLIENT_STATE_TYPE_URL: &str = "/ibc.lightclients.tendermint.v1.ClientState";
+const TENDERMINT_CONSENSUS_STATE_TYPE_URL: &str = "/ibc.lightclients.tendermint.v1.ConsensusState";
 
 pub trait KnownProto
 where
@@ -201,7 +200,7 @@ impl KnownProtoWithFrom for tendermint::time::Time {
     type RawWithFrom = tendermint_proto::google::protobuf::Timestamp;
 }
 
-impl KnownProto for ibc::timestamp::Timestamp {
+impl KnownProto for ibc::core::timestamp::Timestamp {
     type Raw = u64;
 
     fn into_raw(self) -> Self::Raw {
@@ -209,7 +208,7 @@ impl KnownProto for ibc::timestamp::Timestamp {
     }
 
     fn from_raw(raw: Self::Raw) -> anyhow::Result<Self> {
-        Ok(ibc::timestamp::Timestamp::from_nanoseconds(raw)?)
+        Ok(ibc::core::timestamp::Timestamp::from_nanoseconds(raw)?)
     }
 }
 
@@ -225,7 +224,6 @@ impl KnownProto for ModuleId {
     }
 
     fn from_raw(raw: Self::Raw) -> anyhow::Result<Self> {
-        raw.parse()
-            .map_err(|InvalidModuleId| anyhow!("Invalid module ID: {:?}", raw))
+        Ok(Self::new(raw))
     }
 }

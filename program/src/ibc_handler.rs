@@ -15,7 +15,7 @@ use {
     },
     ibc::{
         core::{
-            context::{ContextError, ExecutionContext, Router, ValidationContext},
+            events::IbcEvent,
             ics02_client::{
                 client_state::ClientState, consensus_state::ConsensusState, error::ClientError,
                 height::Height,
@@ -24,13 +24,10 @@ use {
             ics04_channel::{
                 channel::{ChannelEnd, Counterparty, Order},
                 commitment::{AcknowledgementCommitment, PacketCommitment},
-                error::{ChannelError, PacketError},
-                handler::ModuleExtras,
-                msgs::acknowledgement::Acknowledgement,
-                packet::{Packet, Receipt, Sequence},
+                error::{ChannelError, PacketError, PortError},
+                packet::{Acknowledgement, Packet, Receipt, Sequence},
                 Version,
             },
-            ics05_port::error::PortError,
             ics23_commitment::commitment::CommitmentPrefix,
             ics24_host::{
                 identifier::{ChannelId, ClientId, ConnectionId, PortId},
@@ -40,11 +37,11 @@ use {
                     SeqAckPath, SeqRecvPath, SeqSendPath,
                 },
             },
-            ics26_routing::context::{Module, ModuleId},
+            router::{Module, ModuleExtras, ModuleId, Router},
+            timestamp::Timestamp,
+            ContextError, ExecutionContext, ValidationContext,
         },
-        events::IbcEvent,
-        signer::Signer,
-        timestamp::Timestamp,
+        Signer,
     },
     ibc_proto::google::protobuf,
     solana_sdk::{
@@ -677,8 +674,7 @@ impl<'a> ValidationContext for IbcHandler<'a> {
 }
 
 fn module_id_of_pubkey(pubkey: &Pubkey) -> ModuleId {
-    ModuleId::new(hex::encode(pubkey.as_ref()).into())
-        .expect("Hex pubkeys should always be alphanumeric")
+    ModuleId::new(hex::encode(pubkey.as_ref()))
 }
 
 fn pubkey_of_module_id(module_id: &ModuleId) -> anyhow::Result<Pubkey> {

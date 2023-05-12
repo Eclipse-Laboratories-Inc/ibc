@@ -3,13 +3,12 @@ use {
         core::{
             ics04_channel::{
                 channel::{Counterparty, Order},
-                msgs::acknowledgement::Acknowledgement,
-                packet::Packet,
+                packet::{Acknowledgement, Packet},
                 Version,
             },
             ics24_host::identifier::{ChannelId, ConnectionId, PortId},
         },
-        signer::Signer,
+        Signer,
     },
     serde::{Deserialize, Serialize},
 };

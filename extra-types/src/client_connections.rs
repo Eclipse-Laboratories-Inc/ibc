@@ -1,7 +1,7 @@
 use {
     eclipse_ibc_known_proto::KnownProtoWithFrom,
     eclipse_ibc_proto::eclipse::ibc::client::v1::ClientConnections as RawClientConnections,
-    ibc::core::ics24_host::{error::ValidationError, identifier::ConnectionId},
+    ibc::core::ics24_host::identifier::{ConnectionId, IdentifierError},
     std::collections::HashSet,
 };
 
@@ -22,7 +22,7 @@ impl From<ClientConnections> for RawClientConnections {
 }
 
 impl TryFrom<RawClientConnections> for ClientConnections {
-    type Error = ValidationError;
+    type Error = IdentifierError;
 
     fn try_from(
         RawClientConnections { connections }: RawClientConnections,

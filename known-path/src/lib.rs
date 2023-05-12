@@ -14,7 +14,7 @@ use {
             ClientStatePath, CommitmentPath, ConnectionPath, PortPath, ReceiptPath, SeqAckPath,
             SeqRecvPath, SeqSendPath,
         },
-        ics26_routing::context::ModuleId,
+        router::ModuleId,
     },
     ibc_proto::google::protobuf,
 };
