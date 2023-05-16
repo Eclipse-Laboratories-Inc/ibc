@@ -26,6 +26,7 @@ impl Debug for IbcState<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("IbcState")
             .field("state_jmt", &"<opaque>")
+            .field("state_store", &"<opaque>")
             .field("pending_changes", &self.pending_changes)
             .field("version", &self.version)
             .finish()
