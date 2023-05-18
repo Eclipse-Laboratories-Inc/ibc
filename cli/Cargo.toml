@@ -20,6 +20,7 @@ eclipse-ibc-known-proto = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-program = { workspace = true }
 eclipse-ibc-state = { workspace = true }
+ed25519-dalek = { workspace = true }
 env_logger = { workspace = true }
 hex = { workspace = true }
 ibc = { workspace = true }
@@ -28,6 +29,7 @@ ics23 = { workspace = true }
 jmt = { workspace = true }
 log = { workspace = true }
 prost = { workspace = true }
+rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 solana-client = { workspace = true }

@@ -7,6 +7,7 @@ use {
         ibc_contract_instruction::IbcContractInstruction,
         ibc_instruction::msgs::{MsgBindPort, MsgInitStorageAccount, MsgReleasePort},
     },
+    ed25519_dalek::{PublicKey, SecretKey, SECRET_KEY_LENGTH},
     ibc::core::ics24_host::identifier::PortId,
     ibc_proto::{
         google::protobuf,
@@ -33,6 +34,7 @@ use {
         },
     },
     log::info,
+    rand::{thread_rng, RngCore},
     serde::de::DeserializeOwned,
     solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig},
     solana_sdk::{
@@ -40,7 +42,7 @@ use {
         message::Message,
         pubkey::Pubkey,
         signer::{keypair::read_keypair_file, Signer as _},
-        system_program,
+        system_instruction, system_program,
         sysvar::{clock, rent},
         transaction::Transaction,
     },
@@ -299,6 +301,80 @@ impl TxKind {
     }
 }
 
+const MAX_SINGLE_INSTRUCTION_SIZE: usize = 1000;
+const SHARED_MEMORY_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
+    12, 253, 35, 153, 192, 26, 162, 149, 165, 88, 176, 92, 161, 227, 92, 88, 237, 237, 116, 169,
+    49, 186, 124, 227, 162, 155, 104, 10, 255, 31, 248, 49,
+]);
+
+fn generate_secret_key() -> SecretKey {
+    let mut secret_key_bytes = [0u8; SECRET_KEY_LENGTH];
+    thread_rng().fill_bytes(&mut secret_key_bytes);
+    SecretKey::from_bytes(&secret_key_bytes).unwrap()
+}
+
+async fn split_ibc_instruction_across_txs(
+    mut ibc_instruction_data: Vec<u8>,
+    rpc_client: &RpcClient,
+    payer_pubkey: Pubkey,
+    kind: &TxKind,
+) -> anyhow::Result<Vec<Message>> {
+    let rent_exempt_lamports = rpc_client
+        .get_minimum_balance_for_rent_exemption(MAX_SINGLE_INSTRUCTION_SIZE)
+        .await?;
+
+    let mut messages = vec![];
+    let mut buffer_pubkeys = vec![];
+    while ibc_instruction_data.len() > MAX_SINGLE_INSTRUCTION_SIZE {
+        let new_ibc_instruction_data = ibc_instruction_data.split_off(MAX_SINGLE_INSTRUCTION_SIZE);
+        let split_instruction_data = ibc_instruction_data;
+        ibc_instruction_data = new_ibc_instruction_data;
+
+        let to_secret_key = generate_secret_key();
+        let to_public_key = PublicKey::from(&to_secret_key);
+        let to_pubkey = Pubkey::new_from_array(to_public_key.to_bytes());
+
+        buffer_pubkeys.push(to_pubkey);
+
+        // The shared memory program uses the first 8 bytes of the instruction as a little-endian
+        // offset into the data.
+        let shared_memory_instruction_data = [vec![0u8; 8], split_instruction_data].concat();
+
+        let instructions = [
+            system_instruction::create_account(
+                &payer_pubkey,
+                &to_pubkey,
+                rent_exempt_lamports,
+                MAX_SINGLE_INSTRUCTION_SIZE.try_into()?,
+                &payer_pubkey,
+            ),
+            Instruction::new_with_bytes(
+                SHARED_MEMORY_PROGRAM_ID,
+                &shared_memory_instruction_data,
+                vec![AccountMeta::new(to_pubkey, false)],
+            ),
+        ];
+
+        let message = Message::new(&instructions, Some(&payer_pubkey));
+        messages.push(message);
+    }
+
+    let buffer_accounts = buffer_pubkeys
+        .into_iter()
+        .map(|buffer_pubkey| AccountMeta::new_readonly(buffer_pubkey, false))
+        .collect();
+
+    let main_instruction = Instruction::new_with_bytes(
+        eclipse_ibc_program::id(),
+        &ibc_instruction_data,
+        [buffer_accounts, kind.accounts(payer_pubkey)].concat(),
+    );
+    let main_message = Message::new(&[main_instruction], Some(&payer_pubkey));
+    messages.push(main_message);
+
+    Ok(messages)
+}
+
 #[derive(Debug, Parser)]
 pub(crate) struct Args {
     /// Endpoint to send a request to
@@ -334,26 +410,43 @@ pub(crate) async fn run(
         .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?;
     let rpc_client = RpcClient::new(endpoint);
 
-    info!("Submitting IBC tx: {kind:?}");
-    let instruction = Instruction::new_with_bytes(
-        eclipse_ibc_program::id(),
-        &kind.instruction_data(payer.pubkey())?,
-        kind.accounts(payer.pubkey()),
-    );
+    let messages = split_ibc_instruction_across_txs(
+        kind.instruction_data(payer.pubkey())?,
+        &rpc_client,
+        payer.pubkey(),
+        &kind,
+    )
+    .await?;
 
-    let message = Message::new(&[instruction], Some(&payer.pubkey()));
-    let blockhash = rpc_client.get_latest_blockhash().await?;
+    info!("Submitting IBC txs: {kind:?}");
+    for message in messages {
+        info!("Submitting message: {message:?}");
+        let blockhash = rpc_client.get_latest_blockhash().await?;
 
-    let tx = Transaction::new(&[&payer], message, blockhash);
-    let sig = rpc_client
-        .send_and_confirm_transaction_with_spinner_and_config(
-            &tx,
-            rpc_client.commitment(),
-            RPC_SEND_TRANSACTION_CONFIG,
-        )
-        .await?;
+        let tx = Transaction::new(&[&payer], message, blockhash);
+        let sig = rpc_client
+            .send_and_confirm_transaction_with_spinner_and_config(
+                &tx,
+                rpc_client.commitment(),
+                RPC_SEND_TRANSACTION_CONFIG,
+            )
+            .await?;
 
-    info!("Submitted IBC tx: {sig}");
+        info!("Submitted IBC tx: {sig}");
+    }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_memory_program_id_matches_spl() {
+        let expected_program_id: Pubkey = "shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL"
+            .parse()
+            .unwrap();
+        assert_eq!(expected_program_id, SHARED_MEMORY_PROGRAM_ID);
+    }
 }
