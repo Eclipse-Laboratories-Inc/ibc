@@ -1,3 +1,4 @@
+pub mod ibc_contract_instruction;
 mod ibc_handler;
 pub mod ibc_instruction;
 mod ibc_program;

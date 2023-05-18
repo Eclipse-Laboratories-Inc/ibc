@@ -1,9 +1,11 @@
 use {
     anyhow::anyhow,
+    borsh::BorshSerialize,
     clap::{Parser, Subcommand},
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto},
-    eclipse_ibc_program::ibc_instruction::msgs::{
-        MsgBindPort, MsgInitStorageAccount, MsgReleasePort,
+    eclipse_ibc_program::{
+        ibc_contract_instruction::IbcContractInstruction,
+        ibc_instruction::msgs::{MsgBindPort, MsgInitStorageAccount, MsgReleasePort},
     },
     ibc::core::ics24_host::identifier::PortId,
     ibc_proto::{
@@ -266,7 +268,15 @@ impl TxKind {
 
     fn instruction_data(&self, payer_key: Pubkey) -> anyhow::Result<Vec<u8>> {
         let signer = payer_key.to_string().into();
-        Ok(self.encode_as_any(signer)?.encode())
+        let ibc_instruction_data = self.encode_as_any(signer)?.encode();
+
+        // TODO: Split the tx into multiple txs when necessary
+        let ibc_contract_instruction = IbcContractInstruction {
+            extra_accounts_for_instruction: 0,
+            last_instruction_part: ibc_instruction_data,
+        };
+
+        Ok(BorshSerialize::try_to_vec(&ibc_contract_instruction)?)
     }
 
     fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {

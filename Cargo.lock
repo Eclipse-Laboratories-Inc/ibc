@@ -1337,6 +1337,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "borsh 0.10.3",
  "bs58",
  "clap 4.2.7",
  "colored_json",
@@ -1419,6 +1420,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "borsh 0.10.3",
  "eclipse-ibc-known-proto",
  "eclipse-ibc-light-client",
  "eclipse-ibc-proto",

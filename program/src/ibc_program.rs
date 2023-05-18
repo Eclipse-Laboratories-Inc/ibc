@@ -1,5 +1,6 @@
 use {
     crate::{
+        ibc_contract_instruction,
         ibc_handler::IbcHandler,
         ibc_instruction::{
             msgs::{MsgBindPort, MsgInitStorageAccount, MsgReleasePort},
@@ -7,10 +8,8 @@ use {
         },
         id,
     },
-    eclipse_ibc_known_proto::KnownProto,
     eclipse_ibc_state::{internal_path::StateInitializedPath, IbcAccountData, IbcState},
     ibc::core::dispatch,
-    ibc_proto::google::protobuf,
     solana_program_runtime::{
         ic_msg, invoke_context::InvokeContext, sysvar_cache::get_sysvar_with_account_check,
     },
@@ -37,15 +36,16 @@ fn with_ibc_handler<F>(
     invoke_context: &InvokeContext,
     transaction_context: &TransactionContext,
     instruction_context: &InstructionContext,
+    account_offset: IndexOfAccount,
     f: F,
 ) -> Result<(), InstructionError>
 where
     F: FnOnce(&mut IbcHandler) -> Result<(), InstructionError>,
 {
-    instruction_context.check_number_of_instruction_accounts(3)?;
+    instruction_context.check_number_of_instruction_accounts(account_offset + 3)?;
 
-    let mut storage_account =
-        instruction_context.try_borrow_instruction_account(transaction_context, 1)?;
+    let mut storage_account = instruction_context
+        .try_borrow_instruction_account(transaction_context, account_offset + 1)?;
     if *storage_account.get_owner() != id() {
         return Err(InstructionError::InvalidAccountOwner);
     }
@@ -53,7 +53,11 @@ where
         return Err(InstructionError::InvalidArgument);
     }
 
-    let clock = get_sysvar_with_account_check::clock(invoke_context, instruction_context, 2)?;
+    let clock = get_sysvar_with_account_check::clock(
+        invoke_context,
+        instruction_context,
+        account_offset + 2,
+    )?;
 
     let mut ibc_account_data = IbcAccountData::read_from_account(&storage_account, invoke_context)?;
     let mut ibc_handler = IbcHandler::new(
@@ -83,6 +87,7 @@ where
 
 fn init_storage_account(
     invoke_context: &mut InvokeContext,
+    account_offset: IndexOfAccount,
     payer_key: Pubkey,
     min_rent_balance: u64,
 ) -> Result<(), InstructionError> {
@@ -101,13 +106,17 @@ fn init_storage_account(
     let transaction_context = &invoke_context.transaction_context;
     let instruction_context = transaction_context.get_current_instruction_context()?;
 
-    let mut storage_account =
-        instruction_context.try_borrow_instruction_account(transaction_context, 1)?;
+    let mut storage_account = instruction_context
+        .try_borrow_instruction_account(transaction_context, account_offset + 1)?;
     if *storage_account.get_key() != STORAGE_KEY {
         return Err(InstructionError::InvalidArgument);
     }
 
-    let clock = get_sysvar_with_account_check::clock(invoke_context, instruction_context, 3)?;
+    let clock = get_sysvar_with_account_check::clock(
+        invoke_context,
+        instruction_context,
+        account_offset + 3,
+    )?;
 
     let ibc_account_data = IbcAccountData::default();
 
@@ -136,34 +145,18 @@ pub fn process_instruction(
     let transaction_context = &invoke_context.transaction_context;
     let instruction_context = transaction_context.get_current_instruction_context()?;
 
+    let (ibc_instruction, account_offset) = ibc_contract_instruction::parse_instruction(
+        invoke_context,
+        transaction_context,
+        instruction_context,
+    )?;
+
     let payer_account =
-        instruction_context.try_borrow_instruction_account(transaction_context, 0)?;
+        instruction_context.try_borrow_instruction_account(transaction_context, account_offset)?;
     if !payer_account.is_signer() {
         return Err(InstructionError::MissingRequiredSignature);
     }
     let payer_key = *payer_account.get_key();
-
-    let instruction_data = instruction_context.get_instruction_data();
-    let any_msg = protobuf::Any::decode(instruction_data).map_err(|err| {
-        ic_msg!(
-            invoke_context,
-            "could not parse instruction as Any Protobuf: {:?}",
-            err
-        );
-        InstructionError::InvalidInstructionData
-    })?;
-
-    let type_url = any_msg.type_url.clone();
-    ic_msg!(invoke_context, &type_url);
-
-    let ibc_instruction: IbcInstruction = any_msg.try_into().map_err(|err| {
-        ic_msg!(
-            invoke_context,
-            "could not parse Any Protobuf into a specific instruction: {:?}",
-            err
-        );
-        InstructionError::InvalidInstructionData
-    })?;
 
     match ibc_instruction {
         IbcInstruction::Router(envelope) => {
@@ -171,9 +164,10 @@ pub fn process_instruction(
                 invoke_context,
                 transaction_context,
                 instruction_context,
+                account_offset,
                 |ibc_handler| {
                     dispatch(ibc_handler, envelope).map_err(|err| {
-                        ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
+                        ic_msg!(invoke_context, "instruction failed: {:?}", err);
                         InstructionError::Custom(ROUTER_ERR_CODE)
                     })
                 },
@@ -184,9 +178,10 @@ pub fn process_instruction(
                 invoke_context,
                 transaction_context,
                 instruction_context,
+                account_offset,
                 |ibc_handler| {
                     ibc_handler.bind_port(&port_id, &payer_key).map_err(|err| {
-                        ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
+                        ic_msg!(invoke_context, "instruction failed: {:?}", err);
                         InstructionError::Custom(PORT_ERR_CODE)
                     })
                 },
@@ -197,27 +192,32 @@ pub fn process_instruction(
                 invoke_context,
                 transaction_context,
                 instruction_context,
+                account_offset,
                 |ibc_handler| {
                     ibc_handler
                         .release_port(&port_id, &payer_key)
                         .map_err(|err| {
-                            ic_msg!(invoke_context, "{} failed: {:?}", type_url, err);
+                            ic_msg!(invoke_context, "instruction failed: {:?}", err);
                             InstructionError::Custom(PORT_ERR_CODE)
                         })
                 },
             )?;
         }
         IbcInstruction::Admin(AdminInstruction::InitStorageAccount(MsgInitStorageAccount)) => {
-            instruction_context.check_number_of_instruction_accounts(5)?;
+            instruction_context.check_number_of_instruction_accounts(account_offset + 5)?;
 
-            let rent = get_sysvar_with_account_check::rent(invoke_context, instruction_context, 2)?;
+            let rent = get_sysvar_with_account_check::rent(
+                invoke_context,
+                instruction_context,
+                account_offset + 2,
+            )?;
             let min_rent_balance = rent.minimum_balance(MAX_CPI_INSTRUCTION_DATA_LEN as usize);
 
             // Accounts need to be dropped because `invoke_context.native_invoke`
             // requires `&mut invoke_context`.
             drop(payer_account);
 
-            init_storage_account(invoke_context, payer_key, min_rent_balance)?;
+            init_storage_account(invoke_context, account_offset, payer_key, min_rent_balance)?;
         }
     }
 

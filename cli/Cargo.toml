@@ -10,6 +10,7 @@ edition = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 bincode = { workspace = true }
+borsh = { workspace = true }
 bs58 = { workspace = true }
 clap = { workspace = true }
 colored_json = { workspace = true }

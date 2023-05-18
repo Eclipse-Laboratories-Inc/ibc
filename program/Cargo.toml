@@ -10,6 +10,7 @@ edition = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 bincode = { workspace = true }
+borsh = { workspace = true }
 eclipse-ibc-known-proto = { workspace = true }
 eclipse-ibc-light-client = { workspace = true }
 eclipse-ibc-proto = { workspace = true }
