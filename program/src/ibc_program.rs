@@ -3,7 +3,10 @@ use {
         ibc_contract_instruction,
         ibc_handler::IbcHandler,
         ibc_instruction::{
-            msgs::{MsgBindPort, MsgInitStorageAccount, MsgReleasePort},
+            msgs::{
+                MsgBindPort, MsgInitStorageAccount, MsgReleasePort, MsgWriteTxBuffer,
+                MsgWriteTxBufferMode,
+            },
             AdminInstruction, IbcInstruction, PortInstruction,
         },
         id,
@@ -135,6 +138,53 @@ fn init_storage_account(
     Ok(())
 }
 
+fn create_tx_buffer(
+    invoke_context: &mut InvokeContext,
+    buffer_key: Pubkey,
+    payer_key: Pubkey,
+    min_rent_balance: u64,
+    buffer_size: u64,
+) -> Result<(), InstructionError> {
+    // System account is at index 3
+    invoke_context.native_invoke(
+        system_instruction::create_account(
+            &payer_key,
+            &buffer_key,
+            min_rent_balance,
+            buffer_size,
+            &id(),
+        ),
+        &[buffer_key],
+    )?;
+    Ok(())
+}
+
+fn write_to_tx_buffer(
+    invoke_context: &mut InvokeContext,
+    account_offset: IndexOfAccount,
+    data_offset: usize,
+    data: &[u8],
+) -> Result<(), InstructionError> {
+    let transaction_context = &invoke_context.transaction_context;
+    let instruction_context = transaction_context.get_current_instruction_context()?;
+
+    let mut buffer_account = instruction_context
+        .try_borrow_instruction_account(transaction_context, account_offset + 1)?;
+    let buffer = &mut buffer_account.get_data_mut()?[data_offset..data_offset + data.len()];
+
+    if buffer.len() != data.len() {
+        ic_msg!(
+            invoke_context,
+            "buffer account does not fit entirety of data",
+        );
+        return Err(InstructionError::Custom(STORAGE_ERR_CODE));
+    }
+
+    buffer.copy_from_slice(data);
+
+    Ok(())
+}
+
 /// # Errors
 /// Returns an error if processing the instruction fails due to any of the
 /// errors listed in `InstructionError`.
@@ -218,6 +268,44 @@ pub fn process_instruction(
             drop(payer_account);
 
             init_storage_account(invoke_context, account_offset, payer_key, min_rent_balance)?;
+        }
+        IbcInstruction::Admin(AdminInstruction::WriteTxBuffer(MsgWriteTxBuffer { mode, data })) => {
+            // Accounts need to be dropped because `invoke_context.native_invoke`
+            // requires `&mut invoke_context`.
+            drop(payer_account);
+
+            let data_offset = match mode {
+                MsgWriteTxBufferMode::Create { buffer_size } => {
+                    instruction_context.check_number_of_instruction_accounts(account_offset + 4)?;
+
+                    let buffer_key =
+                        *transaction_context.get_key_of_account_at_index(account_offset + 1)?;
+
+                    let rent = get_sysvar_with_account_check::rent(
+                        invoke_context,
+                        instruction_context,
+                        account_offset + 2,
+                    )?;
+                    let min_rent_balance = rent.minimum_balance(buffer_size as usize);
+
+                    create_tx_buffer(
+                        invoke_context,
+                        buffer_key,
+                        payer_key,
+                        min_rent_balance,
+                        buffer_size,
+                    )?;
+
+                    0
+                }
+                MsgWriteTxBufferMode::Reuse { offset } => {
+                    instruction_context.check_number_of_instruction_accounts(account_offset + 2)?;
+
+                    offset
+                }
+            };
+
+            write_to_tx_buffer(invoke_context, account_offset, data_offset as usize, &data)?;
         }
     }
 

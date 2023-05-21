@@ -12,10 +12,15 @@ use {
 
 pub mod msgs {
     use {
+        anyhow::anyhow,
         core::{convert::Infallible, str::FromStr},
         eclipse_ibc_known_proto::{KnownAnyProto, KnownProtoWithFrom},
         eclipse_ibc_proto::eclipse::ibc::{
-            admin::v1::MsgInitStorageAccount as RawMsgInitStorageAccount,
+            admin::v1::{
+                msg_write_tx_buffer::Mode as RawMsgWriteTxBufferMode,
+                MsgInitStorageAccount as RawMsgInitStorageAccount,
+                MsgWriteTxBuffer as RawMsgWriteTxBuffer,
+            },
             port::v1::{MsgBindPort as RawMsgBindPort, MsgReleasePort as RawMsgReleasePort},
         },
         ibc::core::ics24_host::identifier::PortId,
@@ -123,6 +128,72 @@ pub mod msgs {
             Self {}
         }
     }
+
+    #[derive(Clone, Debug)]
+    pub enum MsgWriteTxBufferMode {
+        Create { buffer_size: u64 },
+        Reuse { offset: u64 },
+    }
+
+    impl From<RawMsgWriteTxBufferMode> for MsgWriteTxBufferMode {
+        fn from(raw_mode: RawMsgWriteTxBufferMode) -> Self {
+            match raw_mode {
+                RawMsgWriteTxBufferMode::CreateBufferSize(buffer_size) => {
+                    Self::Create { buffer_size }
+                }
+                RawMsgWriteTxBufferMode::ReuseOffset(offset) => Self::Reuse { offset },
+            }
+        }
+    }
+
+    impl From<MsgWriteTxBufferMode> for RawMsgWriteTxBufferMode {
+        fn from(mode: MsgWriteTxBufferMode) -> Self {
+            match mode {
+                MsgWriteTxBufferMode::Create { buffer_size } => Self::CreateBufferSize(buffer_size),
+                MsgWriteTxBufferMode::Reuse { offset } => Self::ReuseOffset(offset),
+            }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct MsgWriteTxBuffer {
+        pub mode: MsgWriteTxBufferMode,
+        pub data: Vec<u8>,
+    }
+
+    impl MsgWriteTxBuffer {
+        pub const TYPE_URL: &str = "/eclipse.ibc.admin.v1.MsgWriteTxBuffer";
+    }
+
+    impl KnownProtoWithFrom for MsgWriteTxBuffer {
+        type RawWithFrom = RawMsgWriteTxBuffer;
+    }
+
+    impl KnownAnyProto for MsgWriteTxBuffer {
+        fn type_url() -> String {
+            Self::TYPE_URL.to_owned()
+        }
+    }
+
+    impl TryFrom<RawMsgWriteTxBuffer> for MsgWriteTxBuffer {
+        type Error = anyhow::Error;
+
+        fn try_from(
+            RawMsgWriteTxBuffer { mode, data }: RawMsgWriteTxBuffer,
+        ) -> Result<Self, Self::Error> {
+            let mode = mode.ok_or_else(|| anyhow!("Mode cannot be None"))?.into();
+            Ok(Self { mode, data })
+        }
+    }
+
+    impl From<MsgWriteTxBuffer> for RawMsgWriteTxBuffer {
+        fn from(MsgWriteTxBuffer { mode, data }: MsgWriteTxBuffer) -> Self {
+            Self {
+                mode: Some(mode.into()),
+                data,
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -168,8 +239,8 @@ impl TryFrom<protobuf::Any> for PortInstruction {
 impl From<PortInstruction> for protobuf::Any {
     fn from(port_instruction: PortInstruction) -> Self {
         match port_instruction {
-            PortInstruction::Bind(msg_bind_port) => msg_bind_port.encode_as_any(),
-            PortInstruction::Release(msg_release_port) => msg_release_port.encode_as_any(),
+            PortInstruction::Bind(msg) => msg.encode_as_any(),
+            PortInstruction::Release(msg) => msg.encode_as_any(),
         }
     }
 }
@@ -177,6 +248,7 @@ impl From<PortInstruction> for protobuf::Any {
 #[derive(Clone, Debug)]
 pub enum AdminInstruction {
     InitStorageAccount(msgs::MsgInitStorageAccount),
+    WriteTxBuffer(msgs::MsgWriteTxBuffer),
 }
 
 impl KnownProtoWithFrom for AdminInstruction {
@@ -193,6 +265,11 @@ impl TryFrom<protobuf::Any> for AdminInstruction {
                     .map_err(ProtoError::MalformedMessageBytes)?;
                 Ok(Self::InitStorageAccount(msg))
             }
+            msgs::MsgWriteTxBuffer::TYPE_URL => {
+                let msg = msgs::MsgWriteTxBuffer::decode(&*any_msg.value)
+                    .map_err(ProtoError::MalformedMessageBytes)?;
+                Ok(Self::WriteTxBuffer(msg))
+            }
             _ => Err(ProtoError::UnknownMessageTypeUrl {
                 url: any_msg.type_url,
             }),
@@ -203,9 +280,8 @@ impl TryFrom<protobuf::Any> for AdminInstruction {
 impl From<AdminInstruction> for protobuf::Any {
     fn from(admin_instruction: AdminInstruction) -> Self {
         match admin_instruction {
-            AdminInstruction::InitStorageAccount(msg_init_storage_account) => {
-                msg_init_storage_account.encode_as_any()
-            }
+            AdminInstruction::InitStorageAccount(msg) => msg.encode_as_any(),
+            AdminInstruction::WriteTxBuffer(msg) => msg.encode_as_any(),
         }
     }
 }

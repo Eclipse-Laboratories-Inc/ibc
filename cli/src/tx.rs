@@ -5,9 +5,11 @@ use {
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto},
     eclipse_ibc_program::{
         ibc_contract_instruction::IbcContractInstruction,
-        ibc_instruction::msgs::{MsgBindPort, MsgInitStorageAccount, MsgReleasePort},
+        ibc_instruction::msgs::{
+            MsgBindPort, MsgInitStorageAccount, MsgReleasePort, MsgWriteTxBuffer,
+            MsgWriteTxBufferMode,
+        },
     },
-    ed25519_dalek::{PublicKey, SecretKey, SECRET_KEY_LENGTH},
     ibc::core::ics24_host::identifier::PortId,
     ibc_proto::{
         google::protobuf,
@@ -34,21 +36,24 @@ use {
         },
     },
     log::info,
-    rand::{thread_rng, RngCore},
     serde::de::DeserializeOwned,
     solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig},
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
         message::Message,
         pubkey::Pubkey,
-        signer::{keypair::read_keypair_file, Signer as _},
-        system_instruction, system_program,
+        signer::{
+            keypair::{read_keypair_file, Keypair},
+            Signer as _,
+        },
+        system_program,
         sysvar::{clock, rent},
         transaction::Transaction,
     },
     std::{
         io::{self, BufReader},
         path::PathBuf,
+        sync::Arc,
     },
 };
 
@@ -270,15 +275,7 @@ impl TxKind {
 
     fn instruction_data(&self, payer_key: Pubkey) -> anyhow::Result<Vec<u8>> {
         let signer = payer_key.to_string().into();
-        let ibc_instruction_data = self.encode_as_any(signer)?.encode();
-
-        // TODO: Split the tx into multiple txs when necessary
-        let ibc_contract_instruction = IbcContractInstruction {
-            extra_accounts_for_instruction: 0,
-            last_instruction_part: ibc_instruction_data,
-        };
-
-        Ok(BorshSerialize::try_to_vec(&ibc_contract_instruction)?)
+        Ok(self.encode_as_any(signer)?.encode())
     }
 
     fn accounts(&self, payer_key: Pubkey) -> Vec<AccountMeta> {
@@ -301,27 +298,14 @@ impl TxKind {
     }
 }
 
-const MAX_SINGLE_INSTRUCTION_SIZE: usize = 1000;
-const SHARED_MEMORY_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
-    12, 253, 35, 153, 192, 26, 162, 149, 165, 88, 176, 92, 161, 227, 92, 88, 237, 237, 116, 169,
-    49, 186, 124, 227, 162, 155, 104, 10, 255, 31, 248, 49,
-]);
-
-fn generate_secret_key() -> SecretKey {
-    let mut secret_key_bytes = [0u8; SECRET_KEY_LENGTH];
-    thread_rng().fill_bytes(&mut secret_key_bytes);
-    SecretKey::from_bytes(&secret_key_bytes).unwrap()
-}
+const MAX_SINGLE_INSTRUCTION_SIZE: usize = 825;
 
 async fn split_ibc_instruction_across_txs(
     mut ibc_instruction_data: Vec<u8>,
-    rpc_client: &RpcClient,
-    payer_pubkey: Pubkey,
+    payer: &Arc<Keypair>,
     kind: &TxKind,
-) -> anyhow::Result<Vec<Message>> {
-    let rent_exempt_lamports = rpc_client
-        .get_minimum_balance_for_rent_exemption(MAX_SINGLE_INSTRUCTION_SIZE)
-        .await?;
+) -> anyhow::Result<Vec<(Message, Vec<Arc<Keypair>>)>> {
+    let payer_key = payer.pubkey();
 
     let mut messages = vec![];
     let mut buffer_pubkeys = vec![];
@@ -330,33 +314,40 @@ async fn split_ibc_instruction_across_txs(
         let split_instruction_data = ibc_instruction_data;
         ibc_instruction_data = new_ibc_instruction_data;
 
-        let to_secret_key = generate_secret_key();
-        let to_public_key = PublicKey::from(&to_secret_key);
-        let to_pubkey = Pubkey::new_from_array(to_public_key.to_bytes());
+        let to_keypair = Keypair::new();
+        let to_pubkey = to_keypair.pubkey();
 
         buffer_pubkeys.push(to_pubkey);
 
-        // The shared memory program uses the first 8 bytes of the instruction as a little-endian
-        // offset into the data.
-        let shared_memory_instruction_data = [vec![0u8; 8], split_instruction_data].concat();
+        // TODO: Create a bigger buffer and write to it multiple times, instead of creating
+        // a new buffer for each chunk.
+        let ibc_instruction_data = MsgWriteTxBuffer {
+            mode: MsgWriteTxBufferMode::Create {
+                buffer_size: MAX_SINGLE_INSTRUCTION_SIZE.try_into()?,
+            },
+            data: split_instruction_data,
+        }
+        .encode_as_any()
+        .encode();
 
-        let instructions = [
-            system_instruction::create_account(
-                &payer_pubkey,
-                &to_pubkey,
-                rent_exempt_lamports,
-                MAX_SINGLE_INSTRUCTION_SIZE.try_into()?,
-                &payer_pubkey,
-            ),
-            Instruction::new_with_bytes(
-                SHARED_MEMORY_PROGRAM_ID,
-                &shared_memory_instruction_data,
-                vec![AccountMeta::new(to_pubkey, false)],
-            ),
-        ];
+        let instruction_data = BorshSerialize::try_to_vec(&IbcContractInstruction {
+            extra_accounts_for_instruction: 0,
+            last_instruction_part: ibc_instruction_data,
+        })?;
 
-        let message = Message::new(&instructions, Some(&payer_pubkey));
-        messages.push(message);
+        let instructions = [Instruction::new_with_bytes(
+            eclipse_ibc_program::id(),
+            &instruction_data,
+            vec![
+                AccountMeta::new_readonly(payer_key, true),
+                AccountMeta::new(to_pubkey, true),
+                AccountMeta::new_readonly(rent::id(), false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        )];
+
+        let message = Message::new(&instructions, Some(&payer_key));
+        messages.push((message, vec![Arc::clone(payer), Arc::new(to_keypair)]));
     }
 
     let buffer_accounts = buffer_pubkeys
@@ -364,13 +355,18 @@ async fn split_ibc_instruction_across_txs(
         .map(|buffer_pubkey| AccountMeta::new_readonly(buffer_pubkey, false))
         .collect();
 
+    let instruction_data = BorshSerialize::try_to_vec(&IbcContractInstruction {
+        extra_accounts_for_instruction: messages.len().try_into()?,
+        last_instruction_part: ibc_instruction_data,
+    })?;
+
     let main_instruction = Instruction::new_with_bytes(
         eclipse_ibc_program::id(),
-        &ibc_instruction_data,
-        [buffer_accounts, kind.accounts(payer_pubkey)].concat(),
+        &instruction_data,
+        [buffer_accounts, kind.accounts(payer_key)].concat(),
     );
-    let main_message = Message::new(&[main_instruction], Some(&payer_pubkey));
-    messages.push(main_message);
+    let main_message = Message::new(&[main_instruction], Some(&payer_key));
+    messages.push((main_message, vec![Arc::clone(payer)]));
 
     Ok(messages)
 }
@@ -406,24 +402,26 @@ pub(crate) async fn run(
             keypair_path
         }
     };
-    let payer = read_keypair_file(&payer)
-        .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?;
+    let payer = Arc::new(
+        read_keypair_file(&payer)
+            .map_err(|err| anyhow!("Error reading keypair file: {:?}", err))?,
+    );
     let rpc_client = RpcClient::new(endpoint);
 
-    let messages = split_ibc_instruction_across_txs(
-        kind.instruction_data(payer.pubkey())?,
-        &rpc_client,
-        payer.pubkey(),
-        &kind,
-    )
-    .await?;
+    let messages =
+        split_ibc_instruction_across_txs(kind.instruction_data(payer.pubkey())?, &payer, &kind)
+            .await?;
 
     info!("Submitting IBC txs: {kind:?}");
-    for message in messages {
+    for (message, keypairs) in messages {
         info!("Submitting message: {message:?}");
         let blockhash = rpc_client.get_latest_blockhash().await?;
 
-        let tx = Transaction::new(&[&payer], message, blockhash);
+        let signers = keypairs
+            .iter()
+            .map(|keypair| &**keypair)
+            .collect::<Vec<&Keypair>>();
+        let tx = Transaction::new(&signers, message, blockhash);
         let sig = rpc_client
             .send_and_confirm_transaction_with_spinner_and_config(
                 &tx,
@@ -436,17 +434,4 @@ pub(crate) async fn run(
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn shared_memory_program_id_matches_spl() {
-        let expected_program_id: Pubkey = "shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL"
-            .parse()
-            .unwrap();
-        assert_eq!(expected_program_id, SHARED_MEMORY_PROGRAM_ID);
-    }
 }

@@ -3,3 +3,11 @@ syntax = "proto3";
 package eclipse.ibc.admin.v1;
 
 message MsgInitStorageAccount {}
+
+message MsgWriteTxBuffer {
+  oneof mode {
+    uint64 create_buffer_size = 1;
+    uint64 reuse_offset = 2;
+  }
+  bytes data = 3;
+}
