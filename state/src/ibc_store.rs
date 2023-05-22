@@ -1,7 +1,7 @@
 use {
     anyhow::{anyhow, bail},
     core::fmt::Debug,
-    jmt::storage::{TreeReader, TreeWriter},
+    jmt::storage::{HasPreimage, TreeReader, TreeWriter},
     serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, HashMap},
@@ -11,80 +11,10 @@ use {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct InnerStore {
-    #[serde(with = "store_nodes")]
     nodes: BTreeMap<jmt::storage::NodeKey, jmt::storage::Node>,
     value_history: HashMap<jmt::KeyHash, BTreeMap<jmt::Version, Option<jmt::OwnedValue>>>,
+    preimages: HashMap<jmt::KeyHash, Vec<u8>>,
     versions: Vec<jmt::Version>,
-}
-
-mod store_nodes {
-    use {
-        serde::{
-            de::{self, MapAccess, Visitor},
-            ser::{self, SerializeMap},
-            Deserializer, Serializer,
-        },
-        std::{collections::BTreeMap, fmt},
-    };
-
-    type Value = BTreeMap<jmt::storage::NodeKey, jmt::storage::Node>;
-
-    pub(super) fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(value.len()))?;
-        for (node_key, node) in value {
-            let node_key = node_key
-                .encode()
-                .map_err(|err| ser::Error::custom(format!("failed to encode node key: {err:?}")))?;
-            let node = node
-                .encode()
-                .map_err(|err| ser::Error::custom(format!("failed to encode node: {err:?}")))?;
-            map.serialize_entry(&node_key, &node)?;
-        }
-        map.end()
-    }
-
-    struct ValueVisitor;
-
-    impl<'de> Visitor<'de> for ValueVisitor {
-        type Value = Value;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a map with Jellyfish Merkle Tree node keys and nodes")
-        }
-
-        fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
-        where
-            M: MapAccess<'de>,
-        {
-            let mut map = BTreeMap::new();
-            while let Some((node_key, node)) = access.next_entry::<&[u8], &[u8]>()? {
-                let node_key = jmt::storage::NodeKey::decode(node_key).map_err(|err| {
-                    de::Error::invalid_value(
-                        de::Unexpected::Bytes(node_key),
-                        &&*format!("failed to decode node key: {err}"),
-                    )
-                })?;
-                let node = jmt::storage::Node::decode(node).map_err(|err| {
-                    de::Error::invalid_value(
-                        de::Unexpected::Bytes(node),
-                        &&*format!("failed to decode node: {err}"),
-                    )
-                })?;
-                map.insert(node_key, node);
-            }
-            Ok(map)
-        }
-    }
-
-    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_map(ValueVisitor)
-    }
 }
 
 impl InnerStore {
@@ -130,6 +60,11 @@ impl IbcStore {
                     .next_back()
                     .map(|(&version, _)| version)
             }))
+    }
+
+    pub fn insert_preimage(&self, key_hash: jmt::KeyHash, key: Vec<u8>) -> anyhow::Result<()> {
+        self.write()?.preimages.insert(key_hash, key);
+        Ok(())
     }
 }
 
@@ -202,5 +137,11 @@ impl TreeWriter for IbcStore {
         }
 
         Ok(())
+    }
+}
+
+impl HasPreimage for IbcStore {
+    fn preimage(&self, key_hash: jmt::KeyHash) -> anyhow::Result<Option<Vec<u8>>> {
+        Ok(self.read()?.preimages.get(&key_hash).cloned())
     }
 }

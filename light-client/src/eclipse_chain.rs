@@ -18,7 +18,10 @@ pub const COMMITMENT_PREFIX: &[u8] = b"ibc";
 const REVISION_NUMBER: u64 = 0;
 
 pub fn chain_id(chain_name: &str) -> ChainId {
-    ChainId::new(format!("{CHAIN_NAME_PREFIX}-{chain_name}"), REVISION_NUMBER)
+    ChainId::new(
+        &format!("{CHAIN_NAME_PREFIX}-{chain_name}"),
+        REVISION_NUMBER,
+    )
 }
 
 pub fn height_of_slot(slot: Slot) -> Result<Height, ClientError> {

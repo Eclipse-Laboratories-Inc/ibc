@@ -33,7 +33,7 @@ const CLIENT_TYPE: &str = "xx-eclipse";
 pub const ECLIPSE_CLIENT_STATE_TYPE_URL: &str = "/eclipse.ibc.v1.chain.ClientState";
 
 fn client_type() -> ClientType {
-    ClientType::new(CLIENT_TYPE.to_owned()).unwrap()
+    ClientType::new(CLIENT_TYPE).unwrap()
 }
 
 fn client_err_from_context(err: ContextError) -> ClientError {
@@ -290,15 +290,12 @@ impl ClientState for EclipseClientState {
         &self,
         upgraded_client_state: protobuf::Any,
         upgraded_consensus_state: protobuf::Any,
-        proof_upgrade_client: RawMerkleProof,
-        proof_upgrade_consensus_state: RawMerkleProof,
+        proof_upgrade_client: MerkleProof,
+        proof_upgrade_consensus_state: MerkleProof,
         root: &CommitmentRoot,
     ) -> Result<(), ClientError> {
         let upgraded_client_state = EclipseClientState::try_from(upgraded_client_state)?;
         let upgraded_consensus_state = EclipseConsensusState::try_from(upgraded_consensus_state)?;
-
-        let merkle_proof_upgrade_client = MerkleProof::from(proof_upgrade_client);
-        let merkle_proof_upgrade_consensus_state = MerkleProof::from(proof_upgrade_consensus_state);
 
         if self.latest_height() >= upgraded_client_state.latest_height() {
             return Err(UpgradeClientError::LowUpgradeHeight {
@@ -320,7 +317,7 @@ impl ClientState for EclipseClientState {
 
         let client_state_value = KnownProto::encode(upgraded_client_state);
 
-        merkle_proof_upgrade_client
+        proof_upgrade_client
             .verify_membership(
                 &eclipse_chain::proof_specs(),
                 root.clone().into(),
@@ -340,7 +337,7 @@ impl ClientState for EclipseClientState {
 
         let consensus_state_value = KnownProto::encode(upgraded_consensus_state);
 
-        merkle_proof_upgrade_consensus_state
+        proof_upgrade_consensus_state
             .verify_membership(
                 &eclipse_chain::proof_specs(),
                 root.clone().into(),

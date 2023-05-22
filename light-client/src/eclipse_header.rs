@@ -3,7 +3,7 @@ use {
     eclipse_ibc_known_proto::{KnownAnyProto, KnownProto, KnownProtoWithFrom},
     eclipse_ibc_proto::eclipse::ibc::chain::v1::Header as RawEclipseHeader,
     ibc::core::{
-        ics02_client::{error::ClientError, header::Header, height::Height},
+        ics02_client::{error::ClientError, height::Height},
         ics23_commitment::commitment::CommitmentRoot,
         timestamp::Timestamp,
     },
@@ -19,6 +19,16 @@ pub struct EclipseHeader {
     pub height: Height,
     pub commitment_root: CommitmentRoot,
     pub timestamp: TendermintTime,
+}
+
+impl EclipseHeader {
+    pub fn height(&self) -> Height {
+        self.height
+    }
+
+    pub fn timestamp(&self) -> Timestamp {
+        self.timestamp.into()
+    }
 }
 
 impl From<EclipseHeader> for RawEclipseHeader {
@@ -121,15 +131,5 @@ impl From<EclipseHeader> for EclipseConsensusState {
             commitment_root,
             timestamp,
         }
-    }
-}
-
-impl Header for EclipseHeader {
-    fn height(&self) -> Height {
-        self.height
-    }
-
-    fn timestamp(&self) -> Timestamp {
-        self.timestamp.into()
     }
 }

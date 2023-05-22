@@ -36,7 +36,7 @@ use {
         },
         ics23::CommitmentProof as IbcRawCommitmentProof,
     },
-    ics23::{commitment_proof, CommitmentProof, ExistenceProof},
+    ics23::CommitmentProof,
     log::info,
     prost::Message as _,
     serde::Serialize,
@@ -76,10 +76,7 @@ where
     Ok(())
 }
 
-fn existence_proof_to_merkle_proof(existence_proof: ExistenceProof) -> RawMerkleProof {
-    let commitment_proof = CommitmentProof {
-        proof: Some(commitment_proof::Proof::Exist(existence_proof)),
-    };
+fn commitment_proof_to_merkle_proof(commitment_proof: CommitmentProof) -> RawMerkleProof {
     let ibc_commitment_proof = IbcRawCommitmentProof::decode(&*commitment_proof.encode_to_vec())
         .expect("CommitmentProof should be the same between ics23 and ibc-proto");
 
@@ -285,13 +282,13 @@ impl ConnectionMsg {
                 let consensus_height_of_b_on_a =
                     get_latest_consensus_height(&ibc_state, client_id_on_a)?;
 
-                let proof_init = existence_proof_to_merkle_proof(
+                let proof_init = commitment_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_a.parse()?))?,
                 );
-                let proof_client = existence_proof_to_merkle_proof(
+                let proof_client = commitment_proof_to_merkle_proof(
                     ibc_state.get_proof(&ClientStatePath::new(&client_id_on_a.parse()?))?,
                 );
-                let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let proof_consensus = commitment_proof_to_merkle_proof(ibc_state.get_proof(
                     &ClientConsensusStatePath::new(
                         &client_id_on_a.parse()?,
                         &consensus_height_of_b_on_a,
@@ -341,13 +338,13 @@ impl ConnectionMsg {
                 let consensus_height_of_a_on_b =
                     get_latest_consensus_height(&ibc_state, client_id_on_b)?;
 
-                let proof_try = existence_proof_to_merkle_proof(
+                let proof_try = commitment_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_b.parse()?))?,
                 );
-                let proof_client = existence_proof_to_merkle_proof(
+                let proof_client = commitment_proof_to_merkle_proof(
                     ibc_state.get_proof(&ClientStatePath::new(&client_id_on_b.parse()?))?,
                 );
-                let proof_consensus = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let proof_consensus = commitment_proof_to_merkle_proof(ibc_state.get_proof(
                     &ClientConsensusStatePath::new(
                         &client_id_on_b.parse()?,
                         &consensus_height_of_a_on_b,
@@ -385,7 +382,7 @@ impl ConnectionMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_ack = existence_proof_to_merkle_proof(
+                let proof_ack = commitment_proof_to_merkle_proof(
                     ibc_state.get_proof(&ConnectionPath::new(&connection_id_on_a.parse()?))?,
                 );
 
@@ -498,7 +495,7 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_init = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let proof_init = commitment_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_a.parse()?, &channel_id_on_a.parse()?),
                 )?);
 
@@ -533,7 +530,7 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_try = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let proof_try = commitment_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_b.parse()?, &channel_id_on_b.parse()?),
                 )?);
 
@@ -567,7 +564,7 @@ impl ChannelMsg {
                 let ibc_store = get_ibc_store(rpc_client).await?;
                 let ibc_state = get_ibc_state(&ibc_store)?;
 
-                let proof_ack = existence_proof_to_merkle_proof(ibc_state.get_proof(
+                let proof_ack = commitment_proof_to_merkle_proof(ibc_state.get_proof(
                     &ChannelEndPath::new(&port_id_on_a.parse()?, &channel_id_on_a.parse()?),
                 )?);
 

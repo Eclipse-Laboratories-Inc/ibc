@@ -8,17 +8,18 @@ use {
     eclipse_ibc_known_path::KnownPath,
     eclipse_ibc_known_proto::KnownProto,
     ibc::core::ics23_commitment::commitment::CommitmentRoot,
-    ics23::ExistenceProof,
+    ics23::CommitmentProof,
     jmt::{storage::TreeWriter, Sha256Jmt},
     sha2::Sha256,
     solana_sdk::clock::Slot,
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, HashMap},
 };
 
 pub struct IbcState<'a> {
     state_jmt: Sha256Jmt<'a, IbcStore>,
     state_store: &'a IbcStore,
     pending_changes: BTreeMap<jmt::KeyHash, Option<Vec<u8>>>,
+    pending_preimages: HashMap<jmt::KeyHash, Vec<u8>>,
     version: jmt::Version,
 }
 
@@ -28,6 +29,7 @@ impl Debug for IbcState<'_> {
             .field("state_jmt", &"<opaque>")
             .field("state_store", &"<opaque>")
             .field("pending_changes", &self.pending_changes)
+            .field("pending_preimages", &self.pending_preimages)
             .field("version", &self.version)
             .finish()
     }
@@ -40,6 +42,7 @@ impl<'a> IbcState<'a> {
             state_jmt: Sha256Jmt::new(state_store),
             state_store,
             pending_changes: BTreeMap::new(),
+            pending_preimages: HashMap::new(),
             // Slots map directly to versions
             version: slot,
         }
@@ -90,7 +93,7 @@ impl<'a> IbcState<'a> {
             .transpose()?)
     }
 
-    pub fn get_proof<K>(&self, key: &K) -> anyhow::Result<ExistenceProof>
+    pub fn get_proof<K>(&self, key: &K) -> anyhow::Result<CommitmentProof>
     where
         K: KnownPath,
     {
@@ -100,17 +103,21 @@ impl<'a> IbcState<'a> {
             .find_key_version(self.version, key_hash)?
             .ok_or_else(|| anyhow!("Key {key} does not exist"))?;
 
-        self.state_jmt
-            .get_with_ics23_proof(key.to_string().as_bytes().to_vec(), key_version)
+        let (_value, commitment_proof) = self
+            .state_jmt
+            .get_with_ics23_proof(key.to_string().as_bytes().to_vec(), key_version)?;
+        Ok(commitment_proof)
     }
 
     pub fn set<K>(&mut self, key: &K, value: K::Value)
     where
         K: KnownPath,
     {
-        let key_hash = jmt::KeyHash::with::<Sha256>(key.to_string());
+        let key_bytes = key.to_string().into_bytes();
+        let key_hash = jmt::KeyHash::with::<Sha256>(&key_bytes);
         self.pending_changes
             .insert(key_hash, Some(KnownProto::encode(value)));
+        self.pending_preimages.insert(key_hash, key_bytes);
     }
 
     pub fn update<K>(&mut self, key: &K, f: impl FnOnce(&mut K::Value)) -> anyhow::Result<()>
@@ -134,10 +141,17 @@ impl<'a> IbcState<'a> {
 
     pub fn commit(&mut self) -> anyhow::Result<()> {
         let pending_changes = mem::take(&mut self.pending_changes);
+        let pending_preimages = mem::take(&mut self.pending_preimages);
+
         let (_root_hash, jmt::storage::TreeUpdateBatch { node_batch, .. }) = self
             .state_jmt
             .put_value_set(pending_changes, self.version)?;
         self.state_store.write_node_batch(&node_batch)?;
+
+        for (key_hash, key) in pending_preimages {
+            self.state_store.insert_preimage(key_hash, key)?;
+        }
+
         Ok(())
     }
 }
