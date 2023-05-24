@@ -356,7 +356,7 @@ async fn split_ibc_instruction_across_txs(
         .collect();
 
     let instruction_data = BorshSerialize::try_to_vec(&IbcContractInstruction {
-        extra_accounts_for_instruction: messages.len().try_into()?,
+        extra_accounts_for_instruction: messages.len(),
         last_instruction_part: ibc_instruction_data,
     })?;
 

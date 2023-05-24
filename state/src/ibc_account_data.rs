@@ -41,7 +41,7 @@ impl IbcAccountData {
             );
             InstructionError::InvalidAccountData
         })?;
-        account.set_data(account_data)?;
+        account.set_data(&account_data)?;
         Ok(())
     }
 }

@@ -21,7 +21,6 @@ use {
         pubkey::Pubkey,
         syscalls::MAX_CPI_INSTRUCTION_DATA_LEN,
         system_instruction,
-        transaction_context::IndexOfAccount,
         transaction_context::{InstructionContext, TransactionContext},
     },
 };
@@ -39,7 +38,7 @@ fn with_ibc_handler<F>(
     invoke_context: &InvokeContext,
     transaction_context: &TransactionContext,
     instruction_context: &InstructionContext,
-    account_offset: IndexOfAccount,
+    account_offset: usize,
     f: F,
 ) -> Result<(), InstructionError>
 where
@@ -90,7 +89,7 @@ where
 
 fn init_storage_account(
     invoke_context: &mut InvokeContext,
-    account_offset: IndexOfAccount,
+    account_offset: usize,
     payer_key: Pubkey,
     min_rent_balance: u64,
 ) -> Result<(), InstructionError> {
@@ -161,7 +160,7 @@ fn create_tx_buffer(
 
 fn write_to_tx_buffer(
     invoke_context: &mut InvokeContext,
-    account_offset: IndexOfAccount,
+    account_offset: usize,
     data_offset: usize,
     data: &[u8],
 ) -> Result<(), InstructionError> {
@@ -189,7 +188,7 @@ fn write_to_tx_buffer(
 /// Returns an error if processing the instruction fails due to any of the
 /// errors listed in `InstructionError`.
 pub fn process_instruction(
-    _first_instruction_account: IndexOfAccount,
+    _first_instruction_account: usize,
     invoke_context: &mut InvokeContext,
 ) -> Result<(), InstructionError> {
     let transaction_context = &invoke_context.transaction_context;

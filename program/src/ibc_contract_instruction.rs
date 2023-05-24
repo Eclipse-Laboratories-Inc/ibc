@@ -6,13 +6,13 @@ use {
     solana_program_runtime::{ic_msg, invoke_context::InvokeContext},
     solana_sdk::{
         instruction::InstructionError,
-        transaction_context::{IndexOfAccount, InstructionContext, TransactionContext},
+        transaction_context::{InstructionContext, TransactionContext},
     },
 };
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 pub struct IbcContractInstruction {
-    pub extra_accounts_for_instruction: IndexOfAccount,
+    pub extra_accounts_for_instruction: usize,
     pub last_instruction_part: Vec<u8>,
 }
 
@@ -20,7 +20,7 @@ pub fn parse_instruction(
     invoke_context: &InvokeContext,
     transaction_context: &TransactionContext,
     instruction_context: &InstructionContext,
-) -> Result<(IbcInstruction, IndexOfAccount), InstructionError> {
+) -> Result<(IbcInstruction, usize), InstructionError> {
     let instruction_data = instruction_context.get_instruction_data();
     let IbcContractInstruction {
         extra_accounts_for_instruction,
