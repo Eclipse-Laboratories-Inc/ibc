@@ -8,7 +8,7 @@ use {
             client_state::{ClientState, UpdateKind, UpdatedState},
             client_type::ClientType,
             consensus_state::ConsensusState,
-            error::ClientError,
+            error::{ClientError, UpgradeClientError},
             height::Height,
         },
         ics23_commitment::{
@@ -17,7 +17,7 @@ use {
         },
         ics24_host::{
             identifier::{ChainId, ClientId},
-            path::{ClientConsensusStatePath, ClientStatePath, ClientUpgradePath, Path},
+            path::{ClientConsensusStatePath, ClientStatePath, Path, UpgradeClientPath},
         },
         ContextError, ExecutionContext, ValidationContext,
     },
@@ -138,10 +138,6 @@ impl TryFrom<protobuf::Any> for EclipseClientState {
 impl Protobuf<protobuf::Any> for EclipseClientState {}
 
 impl ClientState for EclipseClientState {
-    fn chain_id(&self) -> ChainId {
-        self.chain_id.clone()
-    }
-
     fn client_type(&self) -> ClientType {
         client_type()
     }
@@ -172,10 +168,6 @@ impl ClientState for EclipseClientState {
 
     fn expired(&self, elapsed: Duration) -> bool {
         elapsed > eclipse_chain::IBC_MESSAGE_VALID_DURATION
-    }
-
-    fn zero_custom_fields(&mut self) {
-        self.frozen_height = None;
     }
 
     fn initialise(
@@ -309,17 +301,18 @@ impl ClientState for EclipseClientState {
         let merkle_proof_upgrade_consensus_state = MerkleProof::from(proof_upgrade_consensus_state);
 
         if self.latest_height() >= upgraded_client_state.latest_height() {
-            return Err(ClientError::LowUpgradeHeight {
+            return Err(UpgradeClientError::LowUpgradeHeight {
                 upgraded_height: self.latest_height(),
                 client_height: upgraded_client_state.latest_height(),
-            });
+            }
+            .into());
         }
 
         let last_height = self.latest_height().revision_height();
 
         let client_upgrade_path = vec![
             //eclipse_chain::UPGRADE_PREFIX.to_owned(),
-            ClientUpgradePath::UpgradedClientState(last_height).to_string(),
+            UpgradeClientPath::UpgradedClientState(last_height).to_string(),
         ];
         let client_upgrade_merkle_path = MerklePath {
             key_path: client_upgrade_path,
@@ -339,7 +332,7 @@ impl ClientState for EclipseClientState {
 
         let consensus_upgrade_path = vec![
             //eclipse_chain::UPGRADE_PREFIX.to_owned(),
-            ClientUpgradePath::UpgradedClientConsensusState(last_height).to_string(),
+            UpgradeClientPath::UpgradedClientConsensusState(last_height).to_string(),
         ];
         let consensus_upgrade_merkle_path = MerklePath {
             key_path: consensus_upgrade_path,

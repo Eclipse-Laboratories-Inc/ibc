@@ -37,8 +37,8 @@ eclipse-ibc-proto = { path = "proto" }
 eclipse-ibc-state = { path = "state" }
 env_logger = "0.10.0"
 hex = "0.4.3"
-ibc = "0.40.0"
-ibc-proto = "0.29.0"
+ibc = "0.41.0"
+ibc-proto = "0.30.0"
 ics23 = "0.9.0"
 jmt = "=0.4.0"
 log = "0.4.19"
@@ -51,12 +51,22 @@ sha2 = "0.10.6"
 solana-client = "=1.14.19"
 solana-program-runtime = "=1.14.19"
 solana-sdk = "=1.14.19"
-tendermint = "0.30.0"
-tendermint-proto = "0.30.0"
+tendermint = "0.31.1"
+tendermint-proto = "0.31.1"
 thiserror = "1.0.40"
 tokio = { version = "1.28.2", features = ["full", "tracing"] }
 tonic = "0.9.2"
 tonic-build = "0.9.2"
+
+[patch.crates-io.aes-gcm-siv]
+git = "https://github.com/Eclipse-Laboratories-Inc/AEADs"
+branch = "v0.10.4-relax-zeroize"
+version = "=0.10.4"
+
+[patch.crates-io.curve25519-dalek]
+git = "https://github.com/Eclipse-Laboratories-Inc/curve25519-dalek"
+branch = "v3.2.2-relax-zeroize"
+version = "=3.2.2"
 
 [patch.crates-io.solana-client]
 git = "https://github.com/Eclipse-Laboratories-Inc/solar-eclipse"
